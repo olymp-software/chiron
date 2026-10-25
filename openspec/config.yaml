@@ -4,7 +4,7 @@ context: |
   Product: a local desktop app for taking interactive IT courses (programming, DevOps, tooling, any IT topic).
   Authors publish courses as git repositories; the app downloads a course, renders its content and runs the
   course's scripts on the learner's machine. The app is content-agnostic: it renders and runs, the course
-  decides what its files mean and how work is checked. The final app name is not chosen yet: write <App>.
+  decides what its files mean and how work is checked. The app is named Chiron.
 
   Stack: Go + Wails v2 + Vue 3. v1 ships for Windows amd64/arm64 only, but course scripts are portable
   across Linux, macOS and Windows, and the core must not preclude Linux/macOS builds.
