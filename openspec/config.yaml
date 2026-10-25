@@ -1,0 +1,66 @@
+schema: spec-driven
+
+context: |
+  Product: a local desktop app for taking interactive IT courses (programming, DevOps, tooling, any IT topic).
+  Authors publish courses as git repositories; the app downloads a course, renders its content and runs the
+  course's scripts on the learner's machine. The app is content-agnostic: it renders and runs, the course
+  decides what its files mean and how work is checked. The final app name is not chosen yet: write <App>.
+
+  Stack: Go + Wails v2 + Vue 3. v1 ships for Windows amd64/arm64 only, but course scripts are portable
+  across Linux, macOS and Windows, and the core must not preclude Linux/macOS builds.
+
+  Write all OpenSpec artifacts in English.
+
+  Domain language. Use these terms with exactly these meanings; never use the "avoid" words for them.
+
+  Actors
+  - App: the desktop application; downloads, renders and runs courses; knows nothing about languages or checking methods. Avoid: program, wrapper, client, player, platform.
+  - Author: person who writes and publishes a course in their repository. Avoid: creator, teacher.
+  - Learner: person taking a course in the app. Avoid: user, student.
+
+  Course and structure
+  - Course: activities grouped into sections, living in one git repository. Avoid: repository (as synonym), track, curriculum.
+  - Course source: normalized repository URL or local folder path; it is what tells courses apart (a fork is another course). Avoid: course id, course link.
+  - Course version: a released state of a course, a git tag vX.Y.Z. Avoid: release, bare "version".
+  - Selected version: the course version the learner is on; changed only explicitly by the learner; may not be the latest. Avoid: current version, installed version.
+  - Schema version: the format version of course.yaml or activity.yaml; unrelated to course version. Avoid: format version, bare "version".
+  - Local-folder course: a course whose source is a local folder; used as is, no tags, uncommitted edits included. Opposite: repository course. Avoid: author mode, local course, dev mode.
+  - Course manifest: course.yaml, the only description of sections, activities and their order. Avoid: table of contents, course config.
+  - Section: a named group of activities; no content or logic of its own. Avoid: module, chapter.
+  - Activity: a unit of progression: theory, quiz or coding. Avoid: lesson, task, exercise, step.
+  - Slug: human-readable id of a section or activity, equal to its folder name; activity slugs are unique course-wide and key progress. Avoid: id, key, name.
+  - Description: short optional plain-text summary of a course or section; activities have none. Avoid: activity description, summary.
+  - Content: the main Markdown text of an activity; every activity has it. Avoid: description, readme, body.
+
+  Activity types
+  - Activity type: the UI mode (read, answer questions, work with files); does not define language or checking. Avoid: activity kind, activity format.
+  - theory: reading content, optionally with controls. Avoid: reading, lecture.
+  - quiz: questions where the learner picks answers. Avoid: test (clashes with code tests), survey.
+  - coding: the learner edits workspace files in their folder; controls run and check the work. Avoid: problem, practice, code.
+
+  Quiz
+  - Question: one quiz item: optional prompt, kind-specific data, optional explanation. Avoid: task, item.
+  - Question kind: the form of a question, e.g. choice. Avoid: question type ("type" is reserved for activities).
+  - Option: one selectable item of a choice question. Avoid: answer (clashes with the learner's answer), choice.
+  - Feedback: text bound to an option, shown when the learner selected it. Avoid: hint, comment.
+  - Explanation: text for the whole question, shown after answering. Avoid: solution, walkthrough.
+
+  Controls and scripts
+  - Control: a labeled activity button that runs a script from that activity's folder. Avoid: action, command.
+  - Control script: the course's shell script a control runs; knows what to put next to the code, run and check. Avoid: hook, command.
+  - Exclusion group: controls of an activity of which only one may run at a time; controls without an explicit group share the activity's default group. Avoid: queue, lock.
+  - Environment check: course-level script verifying the learner's machine has what the course needs; the course cannot start until it succeeds. Avoid: requirements, setup, dependency install.
+
+  Learner's work
+  - Workspace files: files and folders of a coding activity copied to the learner; everything else stays in the course. Avoid: starter files, template, bare "workspace".
+  - Learner folder: a per-activity folder outside the course where the learner works; exists for every activity type. Avoid: sandbox, working copy.
+  - External editor: the code editor chosen in app settings, in which the app opens the learner folder. Avoid: IDE, system editor.
+  - Hidden file: an activity file that is not a workspace file; hidden only from the UI, readable on disk. Avoid: secret file, private test.
+  - Reset: restoring selected workspace files in the learner folder to their course version. Avoid: rollback, restore.
+  - Full reset: deleting the learner folder entirely and recreating it from workspace files. Avoid: cleanup.
+
+  Progression
+  - Current activity: the furthest activity the learner has reached; everything up to it is available, everything after is locked. Avoid: position, last opened activity.
+  - Completed activity: an activity the learner left with "Next" (or "Finish course" on the last one), regardless of what they did in it. Avoid: finished, solved, passed.
+  - Completed course: a course whose last activity in the selected version is completed; stops being completed after switching to a version with activities after it. Avoid: finished course.
+  - New activity: an activity that, after a version switch, lies before the current activity but is not completed. Avoid: unread, updated.

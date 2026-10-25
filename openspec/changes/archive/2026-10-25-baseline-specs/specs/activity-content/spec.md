@@ -1,0 +1,121 @@
+# Spec Delta
+
+## Purpose
+
+Defines the `activity.yaml` file, the activity types and what each lets the learner do, how activity content is written and rendered, and how controls are declared.
+
+## ADDED Requirements
+
+### Requirement: activity.yaml fields
+`activity.yaml` SHALL accept: `version` (integer, required), `type` (`theory`, `quiz` or `coding`, required), `content` (Markdown, required, non-empty), `controls` (list, optional; absent means no controls), `data` (object, presence depends on `type`). Fields common to all types SHALL live at the top level and type-specific fields under `data`.
+
+#### Scenario: Empty content
+- **WHEN** `content` is an empty string
+- **THEN** opening the activity shows an activity error
+
+#### Scenario: No controls
+- **WHEN** `controls` is absent
+- **THEN** the activity shows no control buttons
+
+### Requirement: Activity type defines only the UI mode
+The activity type SHALL define what the learner does in the window: read (`theory`), answer questions (`quiz`) or work with files (`coding`). It MUST NOT define the topic, programming language or checking method; those belong to the course's scripts.
+
+#### Scenario: Non-programming coding activity
+- **WHEN** a DevOps course has a `coding` activity whose workspace files are a `Dockerfile` and a compose file
+- **THEN** the app treats it like any other `coding` activity
+
+### Requirement: theory type
+A `theory` activity SHALL show its content and its controls, if any. `data` MUST NOT be present.
+
+#### Scenario: Theory with a control
+- **WHEN** a `theory` activity has a control "Check Docker installation"
+- **THEN** the activity shows the content and the control button
+
+#### Scenario: Theory with data
+- **WHEN** a `theory` activity has a `data` field
+- **THEN** opening the activity shows an activity error
+
+### Requirement: quiz type
+A `quiz` activity SHALL show its content followed by its questions. `data` SHALL be required and SHALL hold the questions.
+
+#### Scenario: Quiz without data
+- **WHEN** a `quiz` activity has no `data`
+- **THEN** opening the activity shows an activity error
+
+### Requirement: coding type
+A `coding` activity SHALL show its content, an "Open in external editor" button, the output panel and its controls. `data` SHALL be required and SHALL contain `workspace`: a list of at least one item, each an object with a required `path` to a file or folder relative to the activity folder.
+
+```yaml
+type: coding
+controls:
+  - label: Run
+    script: run.sh
+data:
+  workspace:
+    - path: main.go
+    - path: go.mod
+```
+
+#### Scenario: Workspace item as a plain string
+- **WHEN** a `workspace` item is written as `- main.go` instead of `- path: main.go`
+- **THEN** opening the activity shows an activity error
+
+#### Scenario: Empty workspace
+- **WHEN** `workspace` is an empty list
+- **THEN** opening the activity shows an activity error
+
+### Requirement: Markdown dialect
+All Markdown fields (`content` and quiz text fields) SHALL be rendered as CommonMark with GitHub extensions: tables, task lists, strikethrough, autolinks, fenced code blocks with a language tag.
+
+#### Scenario: Table
+- **WHEN** `content` contains a GitHub-style table
+- **THEN** it is rendered as a table
+
+### Requirement: Code highlighting
+Fenced code blocks SHALL be syntax-highlighted by their language tag, supporting the languages and aliases of TextMate grammars as used by Shiki, in light and dark themes. A block without a tag or with an unknown tag SHALL be shown as plain text.
+
+#### Scenario: Known language
+- **WHEN** a code block is tagged `yaml`
+- **THEN** it is highlighted as YAML
+
+#### Scenario: Unknown language
+- **WHEN** a code block is tagged `foolang`
+- **THEN** it is shown as plain text without error
+
+### Requirement: Callouts
+GitHub-style callouts `> [!type]` SHALL be rendered for types `note`, `tip`, `warning` and `task`, case-insensitive. `task` is an app extension; on GitHub it appears as a plain blockquote.
+
+#### Scenario: Task callout
+- **WHEN** `content` contains `> [!TASK]` followed by text
+- **THEN** it is rendered as a task callout
+
+### Requirement: No HTML rendering
+HTML in Markdown MUST NOT be rendered; it SHALL be shown as text. The UI runs in a webview with access to app functions, including running scripts, so HTML from a third-party course would amount to code execution.
+
+#### Scenario: Script tag in content
+- **WHEN** `content` contains `<script>alert(1)</script>`
+- **THEN** the text is shown literally and nothing executes
+
+### Requirement: Local images only
+Images SHALL be referenced only by relative paths to files inside the activity folder. The course SHALL work offline.
+
+#### Scenario: Relative image
+- **WHEN** `content` contains `![diagram](images/diagram.png)` and the file exists in the activity folder
+- **THEN** the image is shown
+
+#### Scenario: Remote image
+- **WHEN** `content` references an image by `https://` URL
+- **THEN** the image is not loaded
+
+### Requirement: Control declaration
+Any activity type MAY have controls. A control SHALL have `label` (button text, required), `script` (path relative to the activity folder that MUST NOT leave it, required) and `concurrency` (exclusion group name, optional). A control SHALL always run a file; there are no built-in commands in YAML.
+
+```yaml
+controls:
+  - label: Run tests
+    script: test.sh
+```
+
+#### Scenario: Script outside the activity folder
+- **WHEN** a control's `script` is `../shared/test.sh`
+- **THEN** opening the activity shows an activity error
