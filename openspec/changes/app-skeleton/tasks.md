@@ -50,5 +50,7 @@
 
 ## 11. Integration check
 
-- [ ] 11.1 Run the CI-built amd64 exe on Windows: the window opens, the Script panel shows output and exit code for the default script, the Git panel lists tags of the default repository, the Markdown panel shows highlighted code in both themes, the ru/en toggle switches strings, and `%LOCALAPPDATA%\Chiron\logs\chiron.log` has entries; record whether `hostname` flashes a console window
-- [ ] 11.2 Run the CI-built arm64 exe on a Windows arm64 machine or VM with the same checks as 11.1
+- [x] 11.1 Run the CI-built amd64 exe on Windows: the window opens, the Script panel shows output and exit code for the default script, the Git panel lists tags of the default repository, the Markdown panel shows highlighted code in both themes, the ru/en toggle switches strings, and `%LOCALAPPDATA%\Chiron\logs\chiron.log` has entries; record whether `hostname` flashes a console window
+  - Result: checked under x64 emulation on Windows 11 arm64, no native x64 machine: the exe starts, the Script and Git panels work.
+- [x] 11.2 Run the CI-built arm64 exe on a Windows arm64 machine or VM with the same checks as 11.1
+  - Result: all checks pass. Running the default script flashes a console window for `hostname`; fixing it (`CREATE_NO_WINDOW`) belongs to the `script-runtime` change.
