@@ -104,19 +104,19 @@ Bound methods for it are named `Smoke*` and the view lives in `frontend/src/smok
 - *Alternative: tests only:* cannot catch issues specific to the packaged exe (embedded assets, WASM in WebView2, the interpreter and child processes inside a GUI-subsystem exe, arm64).
 
 ### CI (GitHub Actions)
-One workflow on push and pull request:
+One workflow, `.github/workflows/ci-pr.yml`, on pull requests:
 
 ```
 job            runner           steps
-build          windows-latest   npm ci; wails build -platform windows/amd64,windows/arm64
-                                -webview2 download; golangci-lint ./...;
-                                rename to chiron-windows-{amd64,arm64}.exe; upload artifacts
+build          windows-latest   npm ci; wails build -platform windows/<arch> -webview2 download
+                                -o chiron-windows-<arch>.exe for amd64 and arm64;
+                                golangci-lint ./...; upload artifacts
 go-test        windows, ubuntu, go test ./internal/...; golangci-lint ./internal/...
                macos (matrix)
 frontend       ubuntu-latest    npm ci; lint; prettier --check; vue-tsc; vitest run
 ```
 
-The root package is linted only in `build` (after the frontend is built, since `//go:embed all:frontend/dist` needs the folder). `go-test` covers `./internal/...` so Linux and macOS need no WebKitGTK or cgo setup, and build-tagged files are linted on their own OS. Tool versions (Go, Node, Wails CLI, golangci-lint) are pinned in the workflow; Go is also pinned by `go.mod`.
+The root package is linted only in `build` (after the frontend is built, since `//go:embed all:frontend/dist` needs the folder). `go-test` covers `./internal/...` so Linux and macOS need no WebKitGTK or cgo setup, and build-tagged files are linted on their own OS. Tool versions (Go, Node, Wails CLI, golangci-lint) are pinned in the workflow; Go is also pinned by `go.mod`. `.gitattributes` forces LF line endings on checkout, since Windows runners use `core.autocrlf=true` and `gofmt` rejects CRLF.
 - *Alternative: lint root package everywhere:* needs Wails' cgo dependencies on Linux runners for no benefit while only Windows is shipped.
 
 ### App name in project context

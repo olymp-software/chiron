@@ -46,7 +46,7 @@
 
 ## 10. CI
 
-- [ ] 10.1 Add `.github/workflows/ci.yml` with jobs `build` (windows-latest: wails build amd64+arm64 with `-webview2 download`, `golangci-lint ./...`, rename to `chiron-windows-{amd64,arm64}.exe`, upload artifacts), `go-test` (matrix windows/ubuntu/macos: `go test ./internal/...`, `golangci-lint ./internal/...`), `frontend` (ubuntu: `npm ci`, lint, format check, typecheck, test); pin all tool versions; verify all jobs pass on a pushed branch
+- [x] 10.1 Add `.github/workflows/ci-pr.yml` running on pull requests, with jobs `build` (windows-latest: wails build amd64 and arm64 with `-webview2 download -o chiron-windows-{amd64,arm64}.exe`, `golangci-lint ./...`, upload artifacts), `go-test` (matrix windows/ubuntu/macos: `go test ./internal/...`, `golangci-lint ./internal/...`), `frontend` (ubuntu: `npm ci`, lint, format check, typecheck, test); pin all tool versions; verify all jobs pass on a pushed branch
 
 ## 11. Integration check
 
