@@ -1,0 +1,33 @@
+{
+  "app": {
+    "title": "Chiron"
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "ru": "Русский"
+  },
+  "smoke": {
+    "title": "Smoke check",
+    "error": "Error: {message}",
+    "script": {
+      "title": "Script",
+      "run": "Run",
+      "running": "Running…",
+      "stdout": "Stdout",
+      "stderr": "Stderr",
+      "exitCode": "Exit code: {code}"
+    },
+    "git": {
+      "title": "Git",
+      "url": "Repository URL",
+      "clone": "Clone",
+      "cloning": "Cloning…",
+      "tags": "Tags ({count})",
+      "noTags": "The repository has no tags"
+    },
+    "markdown": {
+      "title": "Markdown"
+    }
+  }
+}

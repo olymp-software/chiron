@@ -1,0 +1,129 @@
+version: '3'
+
+vars:
+  # Windows architecture for local builds and Windows test runs via WSL interop.
+  WIN_ARCH: '{{.WIN_ARCH | default "arm64"}}'
+
+tasks:
+  default:
+    desc: Run all checks
+    cmds:
+      - task: check
+
+  check:
+    desc: Run all linters and tests
+    cmds:
+      - task: frontend:check
+      - task: go:test
+      - task: go:test:windows
+      - task: go:lint
+
+  # Frontend
+
+  frontend:install:
+    desc: Install frontend dependencies
+    dir: frontend
+    sources: [package.json, package-lock.json]
+    cmds:
+      - npm ci
+
+  frontend:lint:
+    desc: Lint the frontend
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm run lint
+
+  frontend:format:
+    desc: Format the frontend with Prettier
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm run format
+
+  frontend:format:check:
+    desc: Check frontend formatting
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm run format:check
+
+  frontend:typecheck:
+    desc: Type-check the frontend
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm run typecheck
+
+  frontend:test:
+    desc: Run frontend tests
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm test
+
+  frontend:build:
+    desc: Build the frontend into frontend/dist
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm run build
+
+  frontend:check:
+    desc: Run all frontend checks
+    cmds:
+      - task: frontend:lint
+      - task: frontend:format:check
+      - task: frontend:typecheck
+      - task: frontend:test
+
+  # Go
+
+  go:test:
+    desc: Run internal package tests for the host OS
+    cmds:
+      - go test {{.CLI_ARGS}} ./internal/...
+
+  go:test:windows:
+    desc: Run internal package tests as Windows executables via WSL interop
+    env:
+      GOOS: windows
+      GOARCH: '{{.WIN_ARCH}}'
+    cmds:
+      - go test {{.CLI_ARGS}} ./internal/...
+
+  go:lint:
+    desc: Lint all Go code for Windows (the root package needs frontend/dist)
+    deps: [frontend:build]
+    env:
+      GOOS: windows
+    cmds:
+      - golangci-lint run ./...
+
+  go:lint:internal:
+    desc: Lint internal packages for the host OS
+    cmds:
+      - golangci-lint run ./internal/...
+
+  go:fmt:
+    desc: Format Go code
+    cmds:
+      - golangci-lint fmt ./...
+
+  # App
+
+  dev:
+    desc: Start wails dev (needs cgo on Linux/macOS)
+    cmds:
+      - wails dev
+
+  build:
+    desc: Build the Windows exe into build/bin (WIN_ARCH=amd64|arm64)
+    cmds:
+      - wails build -platform windows/{{.WIN_ARCH}}
+
+  run:
+    desc: Build and start the Windows exe via WSL interop
+    deps: [build]
+    cmds:
+      - ./build/bin/chiron.exe

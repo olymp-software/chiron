@@ -1,5 +1,7 @@
-<script lang="ts" setup></script>
+<script lang="ts" setup>
+import SmokeView from './smoke/SmokeView.vue'
+</script>
 
 <template>
-  <main>Chiron</main>
+  <SmokeView />
 </template>

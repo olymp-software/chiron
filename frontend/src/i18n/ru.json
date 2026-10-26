@@ -1,0 +1,33 @@
+{
+  "app": {
+    "title": "Chiron"
+  },
+  "locale": {
+    "label": "Язык",
+    "en": "English",
+    "ru": "Русский"
+  },
+  "smoke": {
+    "title": "Проверка сборки",
+    "error": "Ошибка: {message}",
+    "script": {
+      "title": "Скрипт",
+      "run": "Запустить",
+      "running": "Выполняется…",
+      "stdout": "Stdout",
+      "stderr": "Stderr",
+      "exitCode": "Код выхода: {code}"
+    },
+    "git": {
+      "title": "Git",
+      "url": "URL репозитория",
+      "clone": "Клонировать",
+      "cloning": "Клонирование…",
+      "tags": "Теги ({count})",
+      "noTags": "В репозитории нет тегов"
+    },
+    "markdown": {
+      "title": "Markdown"
+    }
+  }
+}

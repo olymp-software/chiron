@@ -2,7 +2,7 @@
 
 ## Context
 
-No code exists yet. The stack and the embedded components are fixed by the baseline design (`openspec/changes/archive/2026-10-25-baseline-specs/design.md`): Go + Wails v2 + Vue 3, `go-git`, `mvdan.cc/sh` with `moreinterp/coreutils` on Windows, Markdown with HTML disabled, Shiki, `vue-i18n`, data in `%LOCALAPPDATA%\Chiron`. See proposal.md for the scope of this change.
+No code exists yet. The stack and the embedded components are fixed by the baseline design (`openspec/changes/archive/2026-10-25-baseline-specs/design.md`): Go + Wails v2 + Vue 3, `go-git`, `mvdan.cc/sh`, Markdown with HTML disabled, Shiki, `vue-i18n`, data in `%LOCALAPPDATA%\Chiron`. This change replaces the baseline's `moreinterp/coreutils` with the app's own base utilities (see `internal/runtime` below). See proposal.md for the scope of this change.
 
 Constraints that shape the skeleton:
 - Wails v2 on Windows needs no cgo; on Linux it needs cgo with WebKitGTK and on macOS cgo with system frameworks. Only Windows exes are built in v1.
@@ -71,9 +71,21 @@ Linux    $XDG_DATA_HOME/chiron                  $XDG_STATE_HOME/chiron
 ### `internal/source`: minimal `go-git` consumer
 One function: clone a repository URL into a given folder (no checkout) and return its tag names. Tests build a fixture repository with `go-git` itself in a temp folder, so tests need neither network nor system git.
 
-### `internal/runtime`: minimal `mvdan.cc/sh` consumer
-One function: run a script source in a given working folder and return stdout, stderr and the exit code. On Windows the exec handler chain starts with `moreinterp/coreutils`; on Linux/macOS the system utilities are used, as the baseline design states. `mvdan.cc/sh/moreinterp` is required at a pinned pseudo-version with a comment in `go.mod` explaining the pin. Tests run the same script on all three OSes using only guaranteed commands (`mkdir`, `touch`, `ls`, `cat`, `echo`) and a non-zero `exit`.
-- *Alternative: coreutils on every OS:* more uniform behavior; it is a `script-runtime` decision and does not change the skeleton's shape.
+### `internal/runtime`: minimal `mvdan.cc/sh` consumer with the app's own utilities
+One function: run a script source in a given working folder and return stdout, stderr and the exit code. Shell builtins (`echo`, `printf`, `cd`, `test`/`[`, `export`, `exit`, ...) come from `mvdan.cc/sh` itself.
+
+The guaranteed utilities `cat cp mkdir mv rm touch` are implemented in Go in `internal/runtime` and installed as an `interp.ExecHandlers` middleware on **every** OS, so they behave the same everywhere by construction; any other command falls through to the system. Rules:
+- Flags are a fixed whitelist: `mkdir -p`, `cp -r`, `rm -r -f`; combined short flags (`-rf`) and `--` are accepted. An unknown flag prints a message to stderr and exits with code 1 instead of behaving subtly differently.
+- Paths resolve against the script's current directory; globs are expanded by the interpreter before the utility runs.
+- `cp -r src dst` copies into `dst` when it is an existing directory, as GNU `cp` does.
+- `mv` falls back to copy-and-remove when a rename fails (e.g. across Windows volumes).
+- `rm -f` clears the read-only attribute before removing (e.g. `.git` objects on Windows).
+- `touch` creates a missing file and updates the times of an existing one.
+
+`chmod`, `find`, `ls` and `xargs` are no longer guaranteed. Tests run the same scripts on all three OSes.
+- *Alternative: `moreinterp/coreutils` (baseline):* u-root's `ls` on Windows prints full paths unless `-p` is given, while GNU `-p` means "append `/` to directories"; the module has no tagged releases. Each such difference makes one script behave differently per OS.
+- *Alternative: native scripts per OS (PowerShell on Windows, sh elsewhere):* every script written twice; Windows PowerShell 5.1 reads BOM-less `.ps1` as ANSI and is subject to execution policy.
+- *Alternative: patch `ls -p` on Windows:* fixes one symptom, not the class of problems.
 
 ### Frontend
 - Vue 3 + TypeScript + Vite from the template; npm; Vitest; ESLint (flat config with `eslint-plugin-vue` and `typescript-eslint`) + Prettier.
@@ -89,7 +101,7 @@ The only view in the app is a smoke screen with three panels:
 - Markdown: a sample with fences in several languages and one unknown language, plus a ru/en toggle for the UI strings.
 
 Bound methods for it are named `Smoke*` and the view lives in `frontend/src/smoke/`, so removing it is one folder and a few methods. The external command shows whether a console window flashes; fixing it belongs to `script-runtime`.
-- *Alternative: tests only:* cannot catch issues specific to the packaged exe (embedded assets, WASM in WebView2, coreutils inside a GUI-subsystem exe, arm64).
+- *Alternative: tests only:* cannot catch issues specific to the packaged exe (embedded assets, WASM in WebView2, the interpreter and child processes inside a GUI-subsystem exe, arm64).
 
 ### CI (GitHub Actions)
 One workflow on push and pull request:
@@ -112,7 +124,8 @@ The root package is linted only in `build` (after the frontend is built, since `
 
 ## Risks / Trade-offs
 
-- [`moreinterp/coreutils` behaves differently inside a GUI-subsystem exe than in tests] → the smoke screen runs it in the real exe on both architectures.
+- [The app's utilities diverge from GNU in edge cases] → strict flag whitelist, an error on any unknown flag, the same tests on three OSes.
+- [The interpreter behaves differently inside a GUI-subsystem exe than in tests] → the smoke screen runs it in the real exe on both architectures.
 - [Child processes flash a console window from the GUI exe] → visible on the smoke screen; fixed in the `script-runtime` change, not here.
 - [Shiki grammars or the Oniguruma WASM fail to load from the Wails asset server] → verified on the smoke screen; fallback is the Shiki JS engine.
 - [`navigator.language` in WebView2 may not match the Windows display language] → acceptable for the skeleton; a Go-side detection can replace it when settings arrive.
