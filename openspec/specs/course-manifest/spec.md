@@ -132,3 +132,7 @@ If a file's `version` is higher than the app supports, or `type` or `kind` is un
 #### Scenario: Unknown activity type
 - **WHEN** an `activity.yaml` has `type: terminal`
 - **THEN** the activity shows "requires a newer app version"
+
+#### Scenario: Unknown theory block kind
+- **WHEN** an `activity.yaml` has a theory block with `kind: diagram`
+- **THEN** the activity shows "requires a newer app version"

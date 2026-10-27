@@ -30,7 +30,8 @@ context: |
   - Activity: a unit of progression: theory, quiz or coding. Avoid: lesson, task, exercise, step.
   - Slug: human-readable id of a section or activity, equal to its folder name; activity slugs are unique course-wide and key progress. Avoid: id, key, name.
   - Description: short optional plain-text summary of a course or section; activities have none; the course description is shown in the course overview when there is no overview file. Avoid: activity description, summary.
-  - Content: the main Markdown text of an activity; every activity has it. Avoid: description, readme, body.
+  - Theory block: one item of an activity's theory_blocks, shown in order at the top of the activity; every activity has at least one. Avoid: content, section, body.
+  - Block kind: the form of a theory block, e.g. markdown. Avoid: block type ("type" is reserved for activities).
   - Overview file: optional OVERVIEW.md in the course root, matched case-insensitively; Markdown text shown in the course overview. Avoid: readme, about.
 
   Library and enrollment
@@ -40,7 +41,7 @@ context: |
 
   Activity types
   - Activity type: the UI mode (read, answer questions, work with files); does not define language or checking. Avoid: activity kind, activity format.
-  - theory: reading content, optionally with controls. Avoid: reading, lecture.
+  - theory: reading theory blocks, optionally with controls. Avoid: reading, lecture.
   - quiz: questions where the learner picks answers. Avoid: test (clashes with code tests), survey.
   - coding: the learner edits workspace files in their folder; controls run and check the work. Avoid: problem, practice, code.
 

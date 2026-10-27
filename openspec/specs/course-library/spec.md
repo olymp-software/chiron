@@ -67,7 +67,7 @@ The overview text SHALL be the content of the overview file `OVERVIEW.md` in the
 - **THEN** the overview shows a course error
 
 ### Requirement: Overview file rendering
-The overview file SHALL be rendered with the same Markdown dialect, code highlighting, callouts and HTML restriction as activity content. Images SHALL be referenced only by relative paths to files inside the course; remote images SHALL NOT be loaded.
+The overview file SHALL be rendered with the same Markdown dialect, code highlighting, callouts and HTML restriction as activity Markdown. Images SHALL be referenced only by relative paths to files inside the course; remote images SHALL NOT be loaded.
 
 #### Scenario: Script tag in the overview file
 - **WHEN** `OVERVIEW.md` contains `<script>alert(1)</script>`
