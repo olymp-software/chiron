@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "chiron",
+  "outputfilename": "chiron",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Ivan Khomutov",
+    "email": "i.khomutov@protonmail.com"
+  },
+  "info": {
+    "companyName": "Olymp Software",
+    "productName": "Chiron",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright (c) 2026 Olymp Software",
+    "comments": "Interactive IT courses"
+  }
+}
