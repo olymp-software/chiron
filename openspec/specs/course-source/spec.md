@@ -44,15 +44,19 @@ A course version SHALL be a git tag of the form `vX.Y.Z`. A repository without s
 - **THEN** the app lists the versions in descending order with `v1.10.0` preselected
 
 ### Requirement: Only the learner changes the selected version
-The learner SHALL choose the course version in the course library, where tags are listed in descending version order. Switching SHALL work in both directions. The app MUST NOT change the selected version on its own.
+The learner SHALL choose the course version in the course overview, where tags are listed in descending version order. Switching SHALL work in both directions. The app MUST NOT change the selected version on its own.
 
 #### Scenario: A newer version is released
 - **WHEN** the course gets a tag newer than the selected version
 - **THEN** the selected version stays the same and the course is marked in the library as not on the latest version
 
 #### Scenario: Switching to an older version
-- **WHEN** the learner picks a version older than the selected one
-- **THEN** the course opens on the picked version
+- **WHEN** the learner picks a version older than the selected one in the course overview
+- **THEN** the course overview shows the picked version
+
+#### Scenario: No version selector on the course screen
+- **WHEN** the learner is on the course screen
+- **THEN** there is no control that changes the selected version
 
 ### Requirement: Tags are fetched when a course opens
 When a repository course opens, the app SHALL fetch its tag list. Without network access the fetch SHALL be skipped and the course SHALL work from the local clone.
@@ -73,7 +77,7 @@ Before switching versions the app SHALL stop the course's running scripts. The t
 
 #### Scenario: Target version has a broken manifest
 - **WHEN** the learner switches to a version whose `course.yaml` is invalid
-- **THEN** a course error is shown instead of the course tree, and the learner can switch to another version from the same list
+- **THEN** the course overview shows a course error, and the learner can switch to another version from the same list
 
 #### Scenario: A control is running
 - **WHEN** the learner switches versions while a control script is running
@@ -105,20 +109,17 @@ A course SHALL be added by repository URL or from a local folder. There is no co
 - **WHEN** the learner switches an already added course to another version
 - **THEN** no script warning is shown
 
-### Requirement: Course library
-Added courses SHALL be listed in the app's course library. On startup the app SHALL open the course that was open last.
-
-#### Scenario: Restart
-- **WHEN** the learner closes the app with a course open and starts it again
-- **THEN** the same course opens
-
 ### Requirement: Removing a course
-Removing a course SHALL by default delete its library entry, clone, progress and learner folders. The confirmation dialog SHALL offer two independent checkboxes, unchecked by default: "Keep progress" and "Keep my files". Before removal the app SHALL stop the course's running scripts.
+Removing a course SHALL by default delete its library entry, enrollment, clone, progress, remembered environment check result and learner folders. The confirmation dialog SHALL offer two independent checkboxes, unchecked by default: "Keep progress" (keeps the enrollment, progress and remembered check result) and "Keep my files". Before removal the app SHALL stop the course's running scripts.
 
 #### Scenario: Remove everything
 - **WHEN** the learner removes a course without checking either box
-- **THEN** the library entry, clone, progress and learner folders of the course are deleted
+- **THEN** the library entry, enrollment, clone, progress and learner folders of the course are deleted
 
 #### Scenario: Re-adding with kept data
 - **WHEN** the learner removed a course with "Keep progress" and "Keep my files" checked and later adds the same source
-- **THEN** the previous progress and learner folders are picked up
+- **THEN** the learner is enrolled again, the course overview shows Continue, and the previous progress and learner folders are picked up
+
+#### Scenario: Re-adding without kept progress
+- **WHEN** the learner removed a course without "Keep progress" and later adds the same source
+- **THEN** the learner is not enrolled and the course overview shows Enroll

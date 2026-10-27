@@ -10,7 +10,7 @@ Defines how the learner moves through a course, what counts as a completed activ
 Progression SHALL be strictly sequential. Initially only the first activity SHALL be available. Every activity up to and including the current activity SHALL be available; every activity after it SHALL be locked.
 
 #### Scenario: New course
-- **WHEN** the learner starts a course
+- **WHEN** the learner enrolls in a course
 - **THEN** only the first activity is available
 
 #### Scenario: Locked activity
@@ -25,11 +25,15 @@ Every activity except the last SHALL have a "Next" button that marks the activit
 - **THEN** the activity is completed and the next one becomes current
 
 ### Requirement: Progress state
-Progress SHALL consist of a pointer to the current activity and a set of completed activity slugs. There is no history of passes.
+Progress SHALL consist of a pointer to the current activity and a set of completed activity slugs. There is no history of passes. Progress SHALL exist only for a course the learner is enrolled in; it SHALL be created empty at Enroll.
 
 #### Scenario: Going back
 - **WHEN** the learner reopens an earlier completed activity from the tree
 - **THEN** the current activity does not change
+
+#### Scenario: Course not enrolled
+- **WHEN** a course is in the library and the learner has not enrolled in it
+- **THEN** the course has no progress
 
 ### Requirement: Completing the course
 On the last activity of the course, "Next" SHALL be replaced by "Finish course", which marks the activity completed and shows that the course is completed. The pointer SHALL stay on the last activity. A course SHALL be completed when its last activity in the selected version is completed.
@@ -43,7 +47,7 @@ On the last activity of the course, "Next" SHALL be replaced by "Finish course",
 - **THEN** the course is no longer completed and that activity shows "Next" again
 
 ### Requirement: Navigation through the tree
-The learner SHALL be able to open any available activity through the course tree. On entering a course, including on app start, the app SHALL open the current activity, not the one opened last.
+The learner SHALL be able to open any available activity through the course tree. Whenever entering a course opens the course screen, including on app start, the app SHALL open the current activity, not the one opened last.
 
 #### Scenario: Restart after browsing back
 - **WHEN** the learner opened an earlier activity, closed the app and started it again

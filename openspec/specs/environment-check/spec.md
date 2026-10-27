@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Defines the course-level environment check: a script that verifies the learner's machine has everything the course needs, and that gates starting the course until it succeeds.
+Defines the course-level environment check: a script that verifies the learner's machine has everything the course needs, and that gates Enroll and Continue in the course overview until it succeeds.
 
 ## Requirements
 
 ### Requirement: Check script declaration
-A course MAY declare an environment check via `check` in `course.yaml`, a path from the course root. If `check` is absent, the course SHALL start immediately.
+A course MAY declare an environment check via `check` in `course.yaml`, a path from the course root. If `check` is absent, Enroll and Continue in the course overview SHALL be available without a check.
 
 ```sh
 # scripts/check.sh
@@ -19,7 +19,7 @@ kubectl version --client || {
 
 #### Scenario: No check declared
 - **WHEN** `course.yaml` has no `check`
-- **THEN** the learner can open the first activity right after adding the course
+- **THEN** the learner can enroll right after adding the course
 
 ### Requirement: Check run environment
 The check SHALL run under the same contract as control scripts (interpreter, guaranteed commands, output, exit code, Stop), except that its working directory SHALL be the course root and `ACTIVITY_DIR` and `WORKSPACE_DIR` SHALL NOT be set. `HOST_OS`, `HOST_ARCH` and the inherited environment SHALL be present.
@@ -33,26 +33,34 @@ The check SHALL run under the same contract as control scripts (interpreter, gua
 - **THEN** the value is empty
 
 ### Requirement: Check gates the course
-If `check` is declared, the course MUST NOT be started until the check exits with code 0. The course screen SHALL show a built-in "Check environment" button. The check's output SHALL explain to the learner what is missing and where to get it.
+If `check` is declared, Enroll and Continue MUST NOT be available until the check exits with code 0. The course overview SHALL show a built-in "Check environment" button, the check status and an output panel. The check's output SHALL explain to the learner what is missing and where to get it.
 
 #### Scenario: Failed check
 - **WHEN** the check exits with code 1
-- **THEN** the output panel shows the script output and activities stay unavailable
+- **THEN** the output panel in the course overview shows the script output and Enroll or Continue stays unavailable
 
 #### Scenario: Successful check
 - **WHEN** the check exits with code 0
-- **THEN** the course can be started
+- **THEN** Enroll or Continue becomes available
+
+#### Scenario: No check button on the course screen
+- **WHEN** the learner is on the course screen
+- **THEN** the "Check environment" button is not shown there
 
 ### Requirement: Remembered by file hash
-A successful check SHALL be remembered together with the SHA-256 of the `check` file. On opening the course the app SHALL recompute the hash; if it differs, the check SHALL be required again. The learner SHALL be able to rerun the check manually at any time.
+A successful check SHALL be remembered together with the SHA-256 of the `check` file. On opening the course overview and on entering a course the app SHALL recompute the hash; if it differs, the check SHALL be required again. The learner SHALL be able to rerun the check manually at any time from the course overview.
 
 #### Scenario: Version with a changed check
 - **WHEN** the learner switches to a course version whose `check` file differs
-- **THEN** the course requires the check again before activities are available
+- **THEN** the course overview requires the check again before Enroll or Continue is available
 
 #### Scenario: Unchanged check
 - **WHEN** the learner reopens the course and the `check` file is unchanged
 - **THEN** the check is not required again
+
+#### Scenario: Required check survives a restart
+- **WHEN** the check became required after a version switch and the learner restarts the app without running it
+- **THEN** the check is still required
 
 ### Requirement: Only the check file is hashed
 Only the `check` file itself SHALL be hashed. If it calls other files, the author SHALL change the `check` file when those change, e.g. by bumping a `# rev 3` comment.

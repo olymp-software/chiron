@@ -7,10 +7,11 @@ Defines the layout of a course repository, the `course.yaml` course manifest, sl
 ## Requirements
 
 ### Requirement: Repository layout
-A course repository SHALL contain `course.yaml` at its root. Each section SHALL be a folder `<section-slug>/` and each activity a folder `<section-slug>/<activity-slug>/` containing `activity.yaml`. There SHALL be no other nesting levels. `README.md` files are allowed for GitHub and ignored by the app.
+A course repository SHALL contain `course.yaml` at its root. Each section SHALL be a folder `<section-slug>/` and each activity a folder `<section-slug>/<activity-slug>/` containing `activity.yaml`. There SHALL be no other nesting levels. The course root MAY contain the overview file `OVERVIEW.md`, matched case-insensitively, shown in the course overview. `README.md` files are allowed for GitHub and ignored by the app.
 
 ```
 course.yaml
+OVERVIEW.md               # optional, shown in the course overview
 README.md                 # optional, ignored by the app
 scripts/check.sh          # optional, environment check
 <section-slug>/
@@ -26,6 +27,10 @@ scripts/check.sh          # optional, environment check
 #### Scenario: Missing course manifest
 - **WHEN** the repository root has no `course.yaml`
 - **THEN** the app shows a course error
+
+#### Scenario: README is not the overview
+- **WHEN** the course root has `README.md` and no overview file
+- **THEN** the course overview does not show the `README.md` content
 
 ### Requirement: Manifest is the only source of course structure
 The set of sections and activities and their order SHALL come only from `course.yaml`. Folder names MUST NOT carry ordering numbers. Progression order SHALL run through all sections: after the last activity of a section comes the first activity of the next.
@@ -46,7 +51,7 @@ The app SHALL build the course tree from `course.yaml` alone and read an activit
 - **THEN** the course tree is shown, and opening `hello` shows an activity error
 
 ### Requirement: course.yaml fields
-`course.yaml` SHALL accept: `version` (integer, required), `title` (string, required), `description` (plain-text string, optional), `check` (path from the course root, optional), `sections` (list, required, at least one). A section SHALL have `slug`, `title` (required), `description` (optional) and `activities` (required, at least one). An activity reference SHALL have `slug` and `title`, both required.
+`course.yaml` SHALL accept: `version` (integer, required), `title` (string, required), `description` (plain-text string, optional; shown in the course overview when there is no overview file), `check` (path from the course root, optional), `sections` (list, required, at least one). A section SHALL have `slug`, `title` (required), `description` (optional) and `activities` (required, at least one). An activity reference SHALL have `slug` and `title`, both required.
 
 ```yaml
 # yaml-language-server: $schema=<schema-base>/course/v1.json

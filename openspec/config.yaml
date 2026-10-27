@@ -29,8 +29,14 @@ context: |
   - Section: a named group of activities; no content or logic of its own. Avoid: module, chapter.
   - Activity: a unit of progression: theory, quiz or coding. Avoid: lesson, task, exercise, step.
   - Slug: human-readable id of a section or activity, equal to its folder name; activity slugs are unique course-wide and key progress. Avoid: id, key, name.
-  - Description: short optional plain-text summary of a course or section; activities have none. Avoid: activity description, summary.
+  - Description: short optional plain-text summary of a course or section; activities have none; the course description is shown in the course overview when there is no overview file. Avoid: activity description, summary.
   - Content: the main Markdown text of an activity; every activity has it. Avoid: description, readme, body.
+  - Overview file: optional OVERVIEW.md in the course root, matched case-insensitively; Markdown text shown in the course overview. Avoid: readme, about.
+
+  Library and enrollment
+  - Library: every course the learner has added, enrolled or not. Avoid: catalog, collection.
+  - Course overview: the window opened from the library; shows the overview file or description, the version selector, the environment check and Enroll or Continue. Avoid: course page, course card.
+  - Enrollment: the learner's decision to take a course from the library, made with Enroll; a course is enrolled exactly when it has progress; ends only when the course is removed. Avoid: subscription, start.
 
   Activity types
   - Activity type: the UI mode (read, answer questions, work with files); does not define language or checking. Avoid: activity kind, activity format.
@@ -49,7 +55,7 @@ context: |
   - Control: a labeled activity button that runs a script from that activity's folder. Avoid: action, command.
   - Control script: the course's shell script a control runs; knows what to put next to the code, run and check. Avoid: hook, command.
   - Exclusion group: controls of an activity of which only one may run at a time; controls without an explicit group share the activity's default group. Avoid: queue, lock.
-  - Environment check: course-level script verifying the learner's machine has what the course needs; the course cannot start until it succeeds. Avoid: requirements, setup, dependency install.
+  - Environment check: course-level script verifying the learner's machine has what the course needs; Enroll and Continue are unavailable until it succeeds for the current check file. Avoid: requirements, setup, dependency install.
 
   Learner's work
   - Workspace files: files and folders of a coding activity copied to the learner; everything else stays in the course. Avoid: starter files, template, bare "workspace".
