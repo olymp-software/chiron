@@ -11,6 +11,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
+	"github.com/olymp-software/chiron/internal/library"
 	"github.com/olymp-software/chiron/internal/platform"
 )
 
@@ -33,7 +34,12 @@ func main() {
 
 	log.Info("starting")
 
-	app := NewApp(dataDir, log)
+	lib, err := library.Open(dataDir, log)
+	if err != nil {
+		log.Error("open library", "err", err)
+		os.Exit(1)
+	}
+	app := NewApp(lib, log)
 
 	err = wails.Run(&options.App{
 		Title:  "Chiron",
@@ -41,6 +47,8 @@ func main() {
 		Height: 768,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
+			// Requests not found in the embedded assets, i.e. course files.
+			Handler: lib.FilesHandler(),
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		Logger:           wailsLogger{log: log},

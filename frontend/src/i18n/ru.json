@@ -1,33 +1,67 @@
 {
   "app": {
-    "title": "Chiron"
+    "title": "Chiron",
+    "releases": "Открыть страницу релизов"
   },
   "locale": {
     "label": "Язык",
     "en": "English",
     "ru": "Русский"
   },
-  "smoke": {
-    "title": "Проверка сборки",
-    "error": "Ошибка: {message}",
-    "script": {
-      "title": "Скрипт",
-      "run": "Запустить",
-      "running": "Выполняется…",
-      "stdout": "Stdout",
-      "stderr": "Stderr",
-      "exitCode": "Код выхода: {code}"
-    },
-    "git": {
-      "title": "Git",
-      "url": "URL репозитория",
-      "clone": "Клонировать",
-      "cloning": "Клонирование…",
-      "tags": "Теги ({count})",
-      "noTags": "В репозитории нет тегов"
-    },
-    "markdown": {
-      "title": "Markdown"
-    }
+  "library": {
+    "title": "Библиотека",
+    "add": "Добавить курс из папки",
+    "adding": "Добавление…",
+    "pickFolder": "Выберите папку курса",
+    "empty": "Курсов пока нет. Добавьте курс из локальной папки."
+  },
+  "scriptWarning": {
+    "title": "Курс будет запускать скрипты",
+    "text": "Курс запускает свои скрипты на вашем компьютере с вашими правами. Добавляйте его, только если доверяете автору.",
+    "confirm": "Добавить курс",
+    "cancel": "Отмена"
+  },
+  "callout": {
+    "note": "Заметка",
+    "tip": "Совет",
+    "warning": "Внимание",
+    "task": "Задание"
+  },
+  "overview": {
+    "back": "Библиотека",
+    "loading": "Загрузка…",
+    "source": "Источник",
+    "key": "Ключ хранения",
+    "sync": "Синхронизировать",
+    "syncing": "Синхронизация…"
+  },
+  "errors": {
+    "manifestMissing": "В корне курса нет course.yaml.",
+    "manifestInvalid": "В course.yaml есть ошибки:",
+    "unsupportedSchemaVersion": "course.yaml использует версию схемы {version}, для неё нужна более новая версия приложения.",
+    "yamlSyntax": "course.yaml не является корректным YAML около строки {line}.",
+    "missingField": "нет обязательного поля «{field}»",
+    "unknownField": "неизвестное поле «{field}»",
+    "wrongType": "ожидается {want}, указано {got}",
+    "invalidSlug": "«{value}» — некорректный slug: используйте строчные латинские буквы и цифры, разделённые одиночными дефисами",
+    "emptyList": "список не должен быть пустым",
+    "emptyString": "значение не должно быть пустым",
+    "invalidValue": "недопустимое значение {value}, ожидается {want}",
+    "schemaProblem": "нарушает правило схемы «{keyword}»",
+    "duplicateSectionSlug": "slug раздела «{slug}» используется больше одного раза",
+    "duplicateActivitySlug": "slug активности «{slug}» используется в курсе больше одного раза",
+    "pathInvalid": "путь «{path}» должен быть относительным, с разделителем / и без ..",
+    "pathNotFound": "файла «{path}» нет в курсе",
+    "overviewFileAmbiguous": "В курсе несколько файлов обзора: {files}. Оставьте один.",
+    "courseReadFailed": "Не удалось прочитать «{path}» в курсе.",
+    "folderNotFound": "Папки «{path}» не существует.",
+    "notAFolder": "«{path}» — не папка.",
+    "storageKeyTaken": "Ключ хранения {key} уже занят курсом {source}.",
+    "courseNotFound": "Курса {source} нет в библиотеке.",
+    "copyFailed": "Не удалось скопировать курс из «{path}».",
+    "libraryNewerFormat": "Библиотека сохранена более новой версией приложения. Обновите приложение, чтобы работать с ней.",
+    "libraryReadFailed": "Не удалось прочитать библиотеку.",
+    "libraryWriteFailed": "Не удалось сохранить библиотеку.",
+    "internal": "Непредвиденная ошибка. Подробности в логе."
   }
 }

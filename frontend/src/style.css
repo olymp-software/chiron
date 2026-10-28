@@ -36,3 +36,17 @@ body {
 #app {
   min-height: 100vh;
 }
+
+code,
+pre {
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+/* Shiki dual themes: light colors inline, dark ones in --shiki-dark. */
+@media (prefers-color-scheme: dark) {
+  .shiki,
+  .shiki span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+}

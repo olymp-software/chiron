@@ -37,6 +37,9 @@ frontend/package.json.md5
 # Task checksums
 .task/
 
+# Local scratch files, e.g. sample courses for manual checks
+/tmp/
+
 # Editor/IDE
 # .idea/
 # .vscode/

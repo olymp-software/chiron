@@ -1,5 +1,5 @@
-// Package source fetches course repositories. It is a minimal go-git consumer
-// for now; the course-source change reshapes it.
+// Package source handles course sources: normalizing them, deriving storage
+// keys, copying local folders and fetching course repositories.
 package source
 
 import (

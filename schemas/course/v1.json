@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/olymp-software/chiron/schemas/course/v1.json",
+  "title": "Chiron course manifest (course.yaml), schema version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "title", "sections"],
+  "properties": {
+    "version": {
+      "description": "Schema version of this file.",
+      "const": 1
+    },
+    "title": {
+      "description": "Course title.",
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "description": "Short plain-text summary, shown in the course overview when there is no OVERVIEW.md.",
+      "type": "string"
+    },
+    "check": {
+      "description": "Path from the course root to the environment check script.",
+      "type": "string",
+      "minLength": 1
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/section" }
+    }
+  },
+  "$defs": {
+    "slug": {
+      "description": "Lowercase letters and digits separated by single hyphens; equals the folder name.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "title", "activities"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "activities": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/activity" }
+        }
+      }
+    },
+    "activity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "title"],
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

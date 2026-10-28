@@ -1,33 +1,67 @@
 {
   "app": {
-    "title": "Chiron"
+    "title": "Chiron",
+    "releases": "Open the releases page"
   },
   "locale": {
     "label": "Language",
     "en": "English",
     "ru": "Русский"
   },
-  "smoke": {
-    "title": "Smoke check",
-    "error": "Error: {message}",
-    "script": {
-      "title": "Script",
-      "run": "Run",
-      "running": "Running…",
-      "stdout": "Stdout",
-      "stderr": "Stderr",
-      "exitCode": "Exit code: {code}"
-    },
-    "git": {
-      "title": "Git",
-      "url": "Repository URL",
-      "clone": "Clone",
-      "cloning": "Cloning…",
-      "tags": "Tags ({count})",
-      "noTags": "The repository has no tags"
-    },
-    "markdown": {
-      "title": "Markdown"
-    }
+  "library": {
+    "title": "Library",
+    "add": "Add course from folder",
+    "adding": "Adding…",
+    "pickFolder": "Choose the course folder",
+    "empty": "No courses yet. Add a course from a local folder."
+  },
+  "scriptWarning": {
+    "title": "This course will run scripts",
+    "text": "A course runs its scripts on your computer with your permissions. Add it only if you trust its author.",
+    "confirm": "Add course",
+    "cancel": "Cancel"
+  },
+  "callout": {
+    "note": "Note",
+    "tip": "Tip",
+    "warning": "Warning",
+    "task": "Task"
+  },
+  "overview": {
+    "back": "Library",
+    "loading": "Loading…",
+    "source": "Source",
+    "key": "Storage key",
+    "sync": "Sync",
+    "syncing": "Syncing…"
+  },
+  "errors": {
+    "manifestMissing": "The course has no course.yaml in its root.",
+    "manifestInvalid": "course.yaml has errors:",
+    "unsupportedSchemaVersion": "course.yaml uses schema version {version}, which requires a newer version of the app.",
+    "yamlSyntax": "course.yaml is not valid YAML near line {line}.",
+    "missingField": "required field “{field}” is missing",
+    "unknownField": "unknown field “{field}”",
+    "wrongType": "expected {want}, got {got}",
+    "invalidSlug": "“{value}” is not a valid slug: use lowercase letters and digits separated by single hyphens",
+    "emptyList": "the list must not be empty",
+    "emptyString": "the value must not be empty",
+    "invalidValue": "invalid value {value}, expected {want}",
+    "schemaProblem": "breaks the schema rule “{keyword}”",
+    "duplicateSectionSlug": "section slug “{slug}” is used more than once",
+    "duplicateActivitySlug": "activity slug “{slug}” is used more than once in the course",
+    "pathInvalid": "path “{path}” must be relative, use / as separator and not contain ..",
+    "pathNotFound": "file “{path}” does not exist in the course",
+    "overviewFileAmbiguous": "The course has several overview files: {files}. Keep only one.",
+    "courseReadFailed": "Could not read “{path}” in the course.",
+    "folderNotFound": "Folder “{path}” does not exist.",
+    "notAFolder": "“{path}” is not a folder.",
+    "storageKeyTaken": "Storage key {key} is already used by {source}.",
+    "courseNotFound": "Course {source} is not in the library.",
+    "copyFailed": "Could not copy the course from “{path}”.",
+    "libraryNewerFormat": "The library was saved by a newer version of the app. Update the app to use it.",
+    "libraryReadFailed": "Could not read the library.",
+    "libraryWriteFailed": "Could not save the library.",
+    "internal": "Unexpected error. Details are in the log."
   }
 }

@@ -15,7 +15,6 @@ The code is the skeleton from `2026-10-26-app-skeleton`: `internal/platform` (da
 - Publishing the JSON Schema at `<schema-base>`; only its file in the repository and its embedding.
 - `activity.yaml` and its schema; no activity is opened in this change.
 - `state/<key>.json`; nothing writes progress yet.
-- Opening links from the overview text in an external browser.
 
 ## Decisions
 
@@ -78,7 +77,7 @@ Writes go through `platform.WriteFileAtomic` (temp file in the same folder, `fsy
 ### Copying a local folder
 `source.CopyLocal(src, dst)` walks `src` with `filepath.WalkDir`:
 - `.git` is skipped at any depth.
-- Ignore rules come from go-git's `plumbing/format/gitignore`: `ReadPatterns` over an `osfs` of `src` collects every `.gitignore` inside the folder with its domain, and `NewMatcher(...).Match(pathParts, isDir)` decides per entry. Global and system patterns and `.git/info/exclude` are not loaded. An ignored directory is skipped without descending.
+- Ignore rules come from go-git's `plumbing/format/gitignore`: each folder's `.gitignore` is parsed with `ParsePattern` and its domain while walking, and `NewMatcher(...).Match(pathParts, isDir)` decides per entry. go-git's `ReadPatterns` is not used because it also loads `.git/info/exclude` at every level. Global and system patterns are not loaded. An ignored directory is skipped without descending.
 - Regular files are copied with their mode bits; symbolic links are skipped and logged, so nothing outside the folder ends up in the copy.
 - *Alternative: own `.gitignore` matcher:* git's rules (anchoring, `**`, negation, directory-only patterns, nesting) are easy to get subtly wrong; go-git is already a dependency.
 - *Alternative: `git ls-files`-like listing via go-git index:* would exclude untracked new files the author has not added yet, which surprises an author mid-edit, and needs the folder to be a repository.
@@ -95,7 +94,8 @@ Both build the new copy in `<data>/courses/<key>.new-<random>/`, then:
 ### `course.yaml` parsing
 ```
 read bytes -> yaml.v3 decode to any -> read `version`
-   version > 1 or not an int  -> "requires a newer app version" (no further parsing)
+   integer version > 1  -> "requires a newer app version" (no further parsing)
+   any other bad version (0, a string) is reported by the schema
 -> marshal to JSON -> validate against embedded schemas/course/v1.json (santhosh-tekuri/jsonschema/v6)
 -> yaml.v3 decode into manifest.Course
 -> semantic checks: unique section slugs, course-wide unique activity slugs,
@@ -139,6 +139,14 @@ Wails `assetserver.Options.Handler` handles requests the embedded assets do not.
 
 In the frontend, `renderMarkdown` gains an optional image resolver. A markdown-it `image` rule override passes each `src` to it: relative paths become `/course-files/<key>/<path relative to the course root>`; anything with a scheme, `//` or a leading `/` gets no `src` and renders its alt text, so remote images are never requested.
 - *Alternative: inline images as data URLs from Go:* no handler, but large overview images bloat each call and the same mechanism is needed for theory blocks.
+
+### Markdown dialect
+The renderer completes the dialect of `activity-content` (the overview uses the same one) without new dependencies:
+- Callouts: a core rule after block parsing turns a blockquote whose first line is exactly `[!note|tip|warning|task]` (case-insensitive) into a callout; the renderer wraps it in `<div class="callout callout-<type>">` with a title passed in by the caller, so titles are translated. Unknown types stay plain blockquotes, as on GitHub.
+- Task lists: a core rule after inline parsing replaces a leading `[ ]`/`[x]` in a list item with a disabled checkbox token rendered by its own rule; raw HTML stays disabled.
+- Autolinks: markdown-it's `linkify`.
+- Links: `MarkdownView.vue` renders the HTML and intercepts clicks on links: `http(s)` and `mailto` open in the external browser via Wails `BrowserOpenURL`, anything else does nothing, so the app window never navigates away.
+- *Alternative: `markdown-it-github-alerts`, `markdown-it-task-lists`:* each a small dependency for a few lines of code, and `task` is an app-only callout type anyway.
 
 ### Frontend screens
 No router: `App.vue` holds the current view (`library` or `overview` of a source) in a ref. New folders `frontend/src/library/` (library list, Add folder) and `frontend/src/overview/` (course overview). Add: Go opens the native folder picker (`runtime.OpenDirectoryDialog`, root package only) → the frontend shows the script warning → `AddLocalCourse(path)` → the overview of the returned course. The smoke screen and the `Smoke*` methods are removed; `source.CloneTags` stays for the repository-course change.
