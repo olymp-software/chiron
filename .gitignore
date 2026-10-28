@@ -31,11 +31,14 @@ go.work.sum
 # Wails build output and frontend artifacts
 build/bin/
 frontend/dist/
-frontend/node_modules/
+node_modules/
 frontend/package.json.md5
 
 # Task checksums
 .task/
+
+# Local scratch files, e.g. sample courses for manual checks
+/tmp/
 
 # Editor/IDE
 # .idea/

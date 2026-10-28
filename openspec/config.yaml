@@ -24,7 +24,10 @@ context: |
   - Course version: a released state of a course, a git tag vX.Y.Z. Avoid: release, bare "version".
   - Selected version: the course version the learner is on; changed only explicitly by the learner; may not be the latest. Avoid: current version, installed version.
   - Schema version: the format version of course.yaml or activity.yaml; unrelated to course version. Avoid: format version, bare "version".
-  - Local-folder course: a course whose source is a local folder; used as is, no tags, uncommitted edits included. Opposite: repository course. Avoid: author mode, local course, dev mode.
+  - Local-folder course: a course whose source is a local folder; no tags; the app works from its course copy, refreshed from the folder (uncommitted edits included) only by Sync. Opposite: repository course. Avoid: author mode, local course, dev mode.
+  - Course copy: the app-owned folder a course is read and run from; a git clone for a repository course, a copy of the folder for a local-folder course. Avoid: cache, mirror.
+  - Storage key: file-system-safe name derived from the course source (`<label>-<hash>`); names everything the app stores on disk for a course. Avoid: course id.
+  - Sync: replacing a local-folder course's course copy with a fresh copy of its folder, started by the learner in the course overview. Avoid: reload, refresh.
   - Course manifest: course.yaml, the only description of sections, activities and their order. Avoid: table of contents, course config.
   - Section: a named group of activities; no content or logic of its own. Avoid: module, chapter.
   - Activity: a unit of progression: theory, quiz or coding. Avoid: lesson, task, exercise, step.
@@ -36,7 +39,7 @@ context: |
 
   Library and enrollment
   - Library: every course the learner has added, enrolled or not. Avoid: catalog, collection.
-  - Course overview: the window opened from the library; shows the overview file or description, the version selector, the environment check and Enroll or Continue. Avoid: course page, course card.
+  - Course overview: the window opened from the library; shows the overview file or description, the version selector (or Sync for a local-folder course), the environment check and Enroll or Continue. Avoid: course page, course card.
   - Enrollment: the learner's decision to take a course from the library, made with Enroll; a course is enrolled exactly when it has progress; ends only when the course is removed. Avoid: subscription, start.
 
   Activity types
