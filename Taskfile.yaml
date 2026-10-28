@@ -60,7 +60,7 @@ tasks:
     dir: frontend
     deps: [frontend:install]
     cmds:
-      - npm test
+      - npm test -- {{.CLI_ARGS}}
 
   frontend:build:
     desc: Build the frontend into frontend/dist
