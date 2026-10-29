@@ -95,13 +95,14 @@ func (l *Library) Sync(key string) (Entry, error) {
 	unlock := l.lockCourse(e.Key)
 	defer unlock()
 
-	// A running script holds its working directory, which blocks the swap on
-	// Windows.
-	l.StopCheck(e.Key)
 	newDir, err := l.buildCopy(e.Source, e.Key)
 	if err != nil {
 		return Entry{}, err
 	}
+	// A running script holds its working directory, which blocks the swap on
+	// Windows. It is stopped only now, so a failed copy leaves it running; the
+	// course lock keeps a new one from starting.
+	l.StopCheck(e.Key)
 	if err := l.swap(newDir, e.Key); err != nil {
 		l.removeAll(newDir)
 		return Entry{}, err

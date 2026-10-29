@@ -27,18 +27,23 @@ const (
 // result after it has been remembered. The result is remembered by the hash
 // of the check file as it was read for this run.
 func (l *Library) StartCheck(key string, out io.Writer, done func(runtime.Result)) error {
-	e, c, err := l.course(key)
+	e, err := l.entry(key)
+	if err != nil {
+		return err
+	}
+	// The course lock keeps Sync from replacing the copy between reading
+	// course.yaml and registering the run, so the check file is read from
+	// the same copy as course.yaml and Sync always sees the run and stops it.
+	unlock := l.lockCourse(e.Key)
+	defer unlock()
+	root := l.CopyPath(e.Key)
+	c, err := manifest.ParseCourse(root)
 	if err != nil {
 		return err
 	}
 	if c.Check == "" {
 		return errors.New("course declares no check")
 	}
-	// The course lock keeps Sync from replacing the copy until the run is
-	// registered, so Sync always sees it and stops it.
-	unlock := l.lockCourse(e.Key)
-	defer unlock()
-	root := l.CopyPath(e.Key)
 	script, err := readCheck(root, c.Check)
 	if err != nil {
 		l.log.Error("read check", "key", e.Key, "path", c.Check, "err", err)
@@ -77,7 +82,8 @@ type check struct {
 }
 
 // StopCheck stops the running check of the course with key, if any, and
-// waits until it has finished.
+// waits until it has finished; a stopped run always finishes within the
+// runtime's abandon delay.
 func (l *Library) StopCheck(key string) {
 	l.checksMu.Lock()
 	ch := l.checks[key]

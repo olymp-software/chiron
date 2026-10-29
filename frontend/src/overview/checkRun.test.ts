@@ -109,7 +109,7 @@ describe('useCheckRun', () => {
     expect(listeners.size).toBe(0)
   })
 
-  it('unsubscribes on dispose', async () => {
+  it('unsubscribes and stops the running check on dispose', async () => {
     started(1)
     const run = useCheckRun('go-1', () => {})
     await run.start()
@@ -117,5 +117,30 @@ describe('useCheckRun', () => {
     run.dispose()
 
     expect(listeners.size).toBe(0)
+    expect(cancelCheck).toHaveBeenCalledExactlyOnceWith('go-1')
+  })
+
+  it('does not cancel a finished check on dispose', async () => {
+    started(1)
+    const run = useCheckRun('go-1', () => {})
+    await run.start()
+    emit('check:exit', { runId: 1, exitCode: 0, stopped: false })
+
+    run.dispose()
+
+    expect(cancelCheck).not.toHaveBeenCalled()
+  })
+
+  it('stops a check disposed before StartCheck returns', async () => {
+    let resolve: (r: main.StartCheckResult) => void = () => {}
+    startCheck.mockReturnValue(new Promise((r) => (resolve = r)))
+    const run = useCheckRun('go-1', () => {})
+    const starting = run.start()
+
+    run.dispose()
+    resolve({ runId: 1 } as main.StartCheckResult)
+    await starting
+
+    expect(cancelCheck).toHaveBeenCalledExactlyOnceWith('go-1')
   })
 })

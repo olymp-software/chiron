@@ -80,6 +80,9 @@ func (t *tree) add(cmd *exec.Cmd) error {
 	return nil
 }
 
+// release does nothing: the job forgets processes that have exited.
+func (t *tree) release(*exec.Cmd) {}
+
 // kill terminates every process in the job.
 func (t *tree) kill() {
 	t.mu.Lock()
