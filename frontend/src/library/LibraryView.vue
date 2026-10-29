@@ -1,16 +1,16 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { AddLocalCourse, ListCourses, PickFolder } from '../../wailsjs/go/main/App'
 import type { apperr, library } from '../../wailsjs/go/models'
 import ErrorView from '../errors/ErrorView.vue'
 import ScriptWarning from './ScriptWarning.vue'
 
-const emit = defineEmits<{ open: [source: string] }>()
-
 const { t } = useI18n()
+const router = useRouter()
 
-const courses = ref<library.Entry[]>([])
+const courses = ref<library.Course[]>([])
 const error = ref<apperr.Error>()
 // pendingPath is the picked folder waiting for the script warning.
 const pendingPath = ref('')
@@ -37,7 +37,7 @@ async function add() {
       error.value = res.error
       return
     }
-    emit('open', res.course.source)
+    router.push(`/library/${res.course.key}`)
   } finally {
     adding.value = false
   }
@@ -56,7 +56,10 @@ async function add() {
     <p v-if="!courses.length && !error">{{ $t('library.empty') }}</p>
     <ul v-else>
       <li v-for="c in courses" :key="c.key">
-        <button class="course" @click="emit('open', c.source)">{{ c.title }}</button>
+        <button class="course" @click="router.push(`/library/${c.key}`)">
+          <span>{{ c.title }}</span>
+          <span v-if="c.enrolled" class="enrolled">{{ $t('library.enrolled') }}</span>
+        </button>
       </li>
     </ul>
     <ScriptWarning v-if="pendingPath" @confirm="add" @cancel="pendingPath = ''" />
@@ -89,8 +92,16 @@ ul {
 }
 
 .course {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
   width: 100%;
   padding: 0.75rem 1rem;
   text-align: left;
+}
+
+.enrolled {
+  opacity: 0.7;
+  font-size: 0.875rem;
 }
 </style>

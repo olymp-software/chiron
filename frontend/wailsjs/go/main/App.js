@@ -10,12 +10,28 @@ export function CourseOverview(arg1) {
   return window['go']['main']['App']['CourseOverview'](arg1);
 }
 
+export function CourseTree(arg1) {
+  return window['go']['main']['App']['CourseTree'](arg1);
+}
+
+export function EnrollCourse(arg1) {
+  return window['go']['main']['App']['EnrollCourse'](arg1);
+}
+
+export function EnterCourse(arg1) {
+  return window['go']['main']['App']['EnterCourse'](arg1);
+}
+
 export function ListCourses() {
   return window['go']['main']['App']['ListCourses']();
 }
 
 export function PickFolder(arg1) {
   return window['go']['main']['App']['PickFolder'](arg1);
+}
+
+export function StartCourse() {
+  return window['go']['main']['App']['StartCourse']();
 }
 
 export function SyncCourse(arg1) {

@@ -1,13 +1,6 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Locale } from './i18n/locale'
-import LibraryView from './library/LibraryView.vue'
-import CourseOverview from './overview/CourseOverview.vue'
-
-type View = { name: 'library' } | { name: 'overview'; source: string }
-
-const view = ref<View>({ name: 'library' })
 
 const { locale } = useI18n()
 const locales: Locale[] = ['en', 'ru']
@@ -30,16 +23,10 @@ const locales: Locale[] = ['en', 'ru']
       </div>
     </header>
     <main>
-      <LibraryView
-        v-if="view.name === 'library'"
-        @open="(source) => (view = { name: 'overview', source })"
-      />
-      <CourseOverview
-        v-else
-        :key="view.source"
-        :source="view.source"
-        @back="view = { name: 'library' }"
-      />
+      <!-- Keyed by the course so that switching courses reloads the screen. -->
+      <RouterView v-slot="{ Component, route }">
+        <component :is="Component" :key="String(route.params.key ?? '')" />
+      </RouterView>
     </main>
   </div>
 </template>

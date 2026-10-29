@@ -6,8 +6,16 @@ export function AddLocalCourse(arg1:string):Promise<main.CourseResult>;
 
 export function CourseOverview(arg1:string):Promise<main.OverviewResult>;
 
+export function CourseTree(arg1:string):Promise<main.TreeResult>;
+
+export function EnrollCourse(arg1:string):Promise<main.ErrorResult>;
+
+export function EnterCourse(arg1:string):Promise<main.EnterResult>;
+
 export function ListCourses():Promise<main.CoursesResult>;
 
 export function PickFolder(arg1:string):Promise<string>;
+
+export function StartCourse():Promise<string>;
 
 export function SyncCourse(arg1:string):Promise<main.CourseResult>;

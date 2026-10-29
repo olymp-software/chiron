@@ -14,7 +14,7 @@ The course screen SHALL have a Library button that opens the library and an Over
 - **THEN** the course overview of that course opens with Sync available
 
 ### Requirement: Back navigation
-The app SHALL keep the history of screens and activities the learner opened. Back (the mouse back button or Alt+Left) SHALL return to the previous entry. A screen the app opened in place of the one the learner asked for SHALL replace that entry instead of adding one. The back button of the course overview SHALL act as Back and open the library when there is no previous entry.
+The app SHALL keep the history of screens and activities the learner opened. Back (the mouse back button or Alt+Left) SHALL return to the previous entry. A screen the app opened in place of the one the learner asked for SHALL replace that entry instead of adding one. The Library button of the course overview SHALL open the library, wherever the overview was opened from.
 
 #### Scenario: Back to the previous activity
 - **WHEN** the learner opens activity A, then activity B from the course tree, and presses Back
@@ -32,8 +32,8 @@ The app SHALL keep the history of screens and activities the learner opened. Bac
 - **WHEN** the learner picks a course in the dropdown whose `course.yaml` became invalid, so its course overview opens, and presses Back
 - **THEN** the course screen that was open before the pick opens
 
-#### Scenario: Overview opened on startup
-- **WHEN** the app opened a course overview on startup and the learner presses its back button
+#### Scenario: Library from the course overview
+- **WHEN** the learner opens the course overview with Overview on the course screen and presses its Library button
 - **THEN** the library opens
 
 ## MODIFIED Requirements

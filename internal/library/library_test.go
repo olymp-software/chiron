@@ -262,7 +262,7 @@ func TestSyncShowsEdits(t *testing.T) {
 	writeFile(t, filepath.Join(src, "OVERVIEW.md"), "new")
 	writeFile(t, filepath.Join(src, manifest.CourseFile), courseYAML("Go Basics 2"))
 
-	synced, err := l.Sync(e.Source)
+	synced, err := l.Sync(e.Key)
 	if err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
@@ -288,7 +288,7 @@ func TestSyncBrokenManifestKeepsTitle(t *testing.T) {
 	broken := "version: 1\ntitle: Broken\n"
 	writeFile(t, filepath.Join(src, manifest.CourseFile), broken)
 
-	synced, err := l.Sync(e.Source)
+	synced, err := l.Sync(e.Key)
 	if err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
@@ -309,7 +309,7 @@ func TestSyncFolderGone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := l.Sync(e.Source)
+	_, err := l.Sync(e.Key)
 
 	wantCode(t, err, apperr.FolderNotFound)
 	if got := readFile(t, filepath.Join(l.CopyPath(e.Key), manifest.CourseFile)); got != courseYAML("Go Basics") {
@@ -324,7 +324,7 @@ func TestSyncDropsFilesWrittenIntoCopy(t *testing.T) {
 	written := filepath.Join(l.CopyPath(e.Key), "basics", "hello", "state.txt")
 	writeFile(t, written, "")
 
-	if _, err := l.Sync(e.Source); err != nil {
+	if _, err := l.Sync(e.Key); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 
@@ -339,7 +339,7 @@ func TestSyncDropsFilesWrittenIntoCopy(t *testing.T) {
 func TestSyncUnknownCourse(t *testing.T) {
 	l, _ := newLib(t)
 
-	_, err := l.Sync("/not/added")
+	_, err := l.Sync("not-added-0000")
 
 	wantCode(t, err, apperr.CourseNotFound)
 }
@@ -453,7 +453,7 @@ func TestOverview(t *testing.T) {
 	l, _ := newLib(t)
 	e := addLocal(t, l, src)
 
-	o, err := l.Overview(e.Source)
+	o, err := l.Overview(e.Key)
 	if err != nil {
 		t.Fatalf("Overview: %v", err)
 	}
@@ -469,11 +469,11 @@ func TestOverviewBrokenManifest(t *testing.T) {
 	l, _ := newLib(t)
 	e := addLocal(t, l, src)
 	writeFile(t, filepath.Join(src, manifest.CourseFile), "version: 1\ntitle: Broken\n")
-	if _, err := l.Sync(e.Source); err != nil {
+	if _, err := l.Sync(e.Key); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 
-	o, err := l.Overview(e.Source)
+	o, err := l.Overview(e.Key)
 	if err != nil {
 		t.Fatalf("Overview: %v", err)
 	}

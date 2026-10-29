@@ -13,7 +13,8 @@
     "add": "Add course from folder",
     "adding": "Adding…",
     "pickFolder": "Choose the course folder",
-    "empty": "No courses yet. Add a course from a local folder."
+    "empty": "No courses yet. Add a course from a local folder.",
+    "enrolled": "Enrolled"
   },
   "scriptWarning": {
     "title": "This course will run scripts",
@@ -33,7 +34,15 @@
     "source": "Source",
     "key": "Storage key",
     "sync": "Sync",
-    "syncing": "Syncing…"
+    "syncing": "Syncing…",
+    "enroll": "Enroll",
+    "continue": "Continue"
+  },
+  "course": {
+    "library": "Library",
+    "switch": "Course",
+    "overview": "Overview",
+    "loading": "Loading…"
   },
   "errors": {
     "manifestMissing": "The course has no course.yaml in its root.",
@@ -57,11 +66,14 @@
     "folderNotFound": "Folder “{path}” does not exist.",
     "notAFolder": "“{path}” is not a folder.",
     "storageKeyTaken": "Storage key {key} is already used by {source}.",
-    "courseNotFound": "Course {source} is not in the library.",
+    "courseNotFound": "Course {key} is not in the library.",
     "copyFailed": "Could not copy the course from “{path}”.",
     "libraryNewerFormat": "The library was saved by a newer version of the app. Update the app to use it.",
     "libraryReadFailed": "Could not read the library.",
     "libraryWriteFailed": "Could not save the library.",
+    "notEnrolled": "You are not enrolled in this course.",
+    "progressReadFailed": "Could not read the course progress.",
+    "progressWriteFailed": "Could not save the course progress.",
     "internal": "Unexpected error. Details are in the log."
   }
 }

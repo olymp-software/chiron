@@ -55,6 +55,26 @@ export namespace apperr {
 
 export namespace library {
 	
+	export class Course {
+	    origin: string;
+	    source: string;
+	    key: string;
+	    title: string;
+	    enrolled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Course(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.origin = source["origin"];
+	        this.source = source["source"];
+	        this.key = source["key"];
+	        this.title = source["title"];
+	        this.enrolled = source["enrolled"];
+	    }
+	}
 	export class Entry {
 	    origin: string;
 	    source: string;
@@ -78,6 +98,7 @@ export namespace library {
 	    source: string;
 	    key: string;
 	    title: string;
+	    enrolled: boolean;
 	    text: manifest.OverviewText;
 	    error?: apperr.Error;
 	
@@ -91,6 +112,7 @@ export namespace library {
 	        this.source = source["source"];
 	        this.key = source["key"];
 	        this.title = source["title"];
+	        this.enrolled = source["enrolled"];
 	        this.text = this.convertValues(source["text"], manifest.OverviewText);
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
@@ -113,6 +135,89 @@ export namespace library {
 		    return a;
 		}
 	}
+	export class TreeActivity {
+	    slug: string;
+	    title: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TreeActivity(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.slug = source["slug"];
+	        this.title = source["title"];
+	    }
+	}
+	export class TreeSection {
+	    slug: string;
+	    title: string;
+	    activities: TreeActivity[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TreeSection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.slug = source["slug"];
+	        this.title = source["title"];
+	        this.activities = this.convertValues(source["activities"], TreeActivity);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Tree {
+	    title: string;
+	    current: string;
+	    sections: TreeSection[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Tree(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.current = source["current"];
+	        this.sections = this.convertValues(source["sections"], TreeSection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 
 }
 
@@ -151,7 +256,7 @@ export namespace main {
 		}
 	}
 	export class CoursesResult {
-	    courses: library.Entry[];
+	    courses: library.Course[];
 	    error?: apperr.Error;
 	
 	    static createFrom(source: any = {}) {
@@ -160,7 +265,69 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.courses = this.convertValues(source["courses"], library.Entry);
+	        this.courses = this.convertValues(source["courses"], library.Course);
+	        this.error = this.convertValues(source["error"], apperr.Error);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class EnterResult {
+	    current: string;
+	    error?: apperr.Error;
+	
+	    static createFrom(source: any = {}) {
+	        return new EnterResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.current = source["current"];
+	        this.error = this.convertValues(source["error"], apperr.Error);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ErrorResult {
+	    error?: apperr.Error;
+	
+	    static createFrom(source: any = {}) {
+	        return new ErrorResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	
@@ -193,6 +360,38 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.overview = this.convertValues(source["overview"], library.Overview);
+	        this.error = this.convertValues(source["error"], apperr.Error);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TreeResult {
+	    tree: library.Tree;
+	    error?: apperr.Error;
+	
+	    static createFrom(source: any = {}) {
+	        return new TreeResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tree = this.convertValues(source["tree"], library.Tree);
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	
