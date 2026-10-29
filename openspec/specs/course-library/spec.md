@@ -33,7 +33,7 @@ The course overview SHALL show the course title, the course source, the storage 
 
 #### Scenario: Course with a check
 - **WHEN** the learner opens the overview of a course whose `course.yaml` declares `check`
-- **THEN** the overview shows the "Check environment" button, the check status and the output panel
+- **THEN** the overview shows the "Check environment" button and the check status, and the check output is shown only in the check modal
 
 #### Scenario: Course without a check
 - **WHEN** the learner opens the overview of a course without `check`

@@ -36,7 +36,21 @@
     "sync": "Sync",
     "syncing": "Syncing…",
     "enroll": "Enroll",
-    "continue": "Continue"
+    "continue": "Continue",
+    "checkEnvironment": "Check environment",
+    "checkStatus": {
+      "notChecked": "Environment not checked",
+      "passed": "Environment check passed",
+      "changed": "Environment check changed, run it again"
+    }
+  },
+  "check": {
+    "title": "Environment check",
+    "running": "Running…",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "stopped": "Stopped",
+    "exitCode": "Exit code {code}"
   },
   "course": {
     "library": "Library",
@@ -74,6 +88,9 @@
     "notEnrolled": "You are not enrolled in this course.",
     "progressReadFailed": "Could not read the course progress.",
     "progressWriteFailed": "Could not save the course progress.",
+    "checkRequired": "Run the environment check first: it must succeed before you can take the course.",
+    "checkRunning": "The environment check of this course is already running.",
+    "checkReadFailed": "Could not read the environment check “{path}” in the course.",
     "internal": "Unexpected error. Details are in the log."
   }
 }

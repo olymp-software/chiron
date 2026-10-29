@@ -54,6 +54,11 @@ const (
 	ProgressReadFailed  Code = "progressReadFailed"
 	ProgressWriteFailed Code = "progressWriteFailed"
 
+	// Environment check.
+	CheckRequired   Code = "checkRequired"
+	CheckRunning    Code = "checkRunning"
+	CheckReadFailed Code = "checkReadFailed"
+
 	// Internal is a failure that is a bug in the app; details are in the log.
 	Internal Code = "internal"
 )
@@ -89,6 +94,9 @@ var All = []Code{
 	NotEnrolled,
 	ProgressReadFailed,
 	ProgressWriteFailed,
+	CheckRequired,
+	CheckRunning,
+	CheckReadFailed,
 	Internal,
 }
 

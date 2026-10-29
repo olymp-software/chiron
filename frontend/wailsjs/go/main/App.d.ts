@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function AddLocalCourse(arg1:string):Promise<main.CourseResult>;
 
+export function CancelCheck(arg1:string):Promise<main.ErrorResult>;
+
 export function CourseOverview(arg1:string):Promise<main.OverviewResult>;
 
 export function CourseTree(arg1:string):Promise<main.TreeResult>;
@@ -15,6 +17,8 @@ export function EnterCourse(arg1:string):Promise<main.EnterResult>;
 export function ListCourses():Promise<main.CoursesResult>;
 
 export function PickFolder(arg1:string):Promise<string>;
+
+export function StartCheck(arg1:string):Promise<main.StartCheckResult>;
 
 export function StartCourse():Promise<string>;
 

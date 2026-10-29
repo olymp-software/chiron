@@ -126,7 +126,7 @@ A course SHALL be added by repository URL or from a local folder. There is no co
 - **THEN** no second entry is created and the course overview of the existing course opens
 
 ### Requirement: Removing a course
-Removing a course SHALL by default delete its library entry, enrollment, clone, progress, remembered environment check result and learner folders. The confirmation dialog SHALL offer two independent checkboxes, unchecked by default: "Keep progress" (keeps the enrollment, progress and remembered check result) and "Keep my files". Before removal the app SHALL stop the course's running scripts.
+Removing a course SHALL by default delete its library entry, enrollment, clone, progress, remembered environment check result and learner folders. The confirmation dialog SHALL offer two independent checkboxes, unchecked by default: "Keep progress" (keeps the enrollment and progress) and "Keep my files". The remembered check result SHALL always be deleted, because the learner's machine may change between removing and re-adding the course. Before removal the app SHALL stop the course's running scripts.
 
 #### Scenario: Remove everything
 - **WHEN** the learner removes a course without checking either box
@@ -139,6 +139,10 @@ Removing a course SHALL by default delete its library entry, enrollment, clone, 
 #### Scenario: Re-adding without kept progress
 - **WHEN** the learner removed a course without "Keep progress" and later adds the same source
 - **THEN** the learner is not enrolled and the course overview shows Enroll
+
+#### Scenario: Re-adding a course with a check
+- **WHEN** the learner removed a course whose check was satisfied, with "Keep progress" checked, and later adds the same source
+- **THEN** the check is not satisfied and Continue is unavailable until the check exits with code 0
 
 ### Requirement: Local-folder source normalization
 The course source of a local-folder course SHALL be the absolute path of the folder with `.` and `..` resolved, symbolic links resolved and no trailing separator. On Windows two sources SHALL be the same course when they differ only in letter case; the source SHALL be stored as the learner's spelling of the first add.

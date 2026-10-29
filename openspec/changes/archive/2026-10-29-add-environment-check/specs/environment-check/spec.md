@@ -37,7 +37,7 @@ A successful check SHALL be remembered in the course's library entry together wi
 ## ADDED Requirements
 
 ### Requirement: Check modal
-Pressing "Check environment" SHALL open a modal that shows the output panel of the run and a Cancel button, and blocks the rest of the window while it is open. Cancel SHALL stop the check the way Stop stops a script. When the check exits, the modal SHALL show the exit code with a success or failure mark and Cancel SHALL become OK. OK SHALL close the modal; the output is not kept after that.
+Pressing "Check environment" SHALL open a modal that shows the output panel of the run and a Cancel button, and blocks the rest of the window while it is open. The modal SHALL keep its size while output arrives; the output panel scrolls instead. Cancel SHALL stop the check the way Stop stops a script and close the modal once the check has stopped. When the check exits on its own, the modal SHALL show the exit code with a success or failure mark and Cancel SHALL become OK. OK SHALL close the modal; the output is not kept after the modal is closed.
 
 #### Scenario: Output while running
 - **WHEN** the check prints lines over several seconds
@@ -45,7 +45,11 @@ Pressing "Check environment" SHALL open a modal that shows the output panel of t
 
 #### Scenario: Cancel a running check
 - **WHEN** the check is running and the learner presses Cancel
-- **THEN** the check and its child processes are terminated
+- **THEN** the check and its child processes are terminated and the modal closes
+
+#### Scenario: Long output
+- **WHEN** the check prints more lines than the output panel can show
+- **THEN** the modal keeps its size and the output panel scrolls, following the latest line unless the learner has scrolled up
 
 #### Scenario: Finished check
 - **WHEN** the check exits with code 1

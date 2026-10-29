@@ -95,7 +95,9 @@ func (l *Library) Sync(key string) (Entry, error) {
 	unlock := l.lockCourse(e.Key)
 	defer unlock()
 
-	// Running scripts of the course are stopped here once scripts can run.
+	// A running script holds its working directory, which blocks the swap on
+	// Windows.
+	l.StopCheck(e.Key)
 	newDir, err := l.buildCopy(e.Source, e.Key)
 	if err != nil {
 		return Entry{}, err

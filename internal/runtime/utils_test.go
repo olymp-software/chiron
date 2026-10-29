@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,21 +8,11 @@ import (
 	"time"
 )
 
-// runIn runs script in dir and fails the test on interpreter errors.
-func runIn(t *testing.T, dir, script string) Result {
-	t.Helper()
-	res, err := Run(context.Background(), script, dir)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	return res
-}
-
 // runOK runs script in dir and fails the test unless it exits with code 0.
 func runOK(t *testing.T, dir, script string) {
 	t.Helper()
 	if res := runIn(t, dir, script); res.ExitCode != 0 {
-		t.Fatalf("exit code = %d, stderr = %q", res.ExitCode, res.Stderr)
+		t.Fatalf("exit code = %d, output = %q", res.ExitCode, res.Output)
 	}
 }
 
@@ -55,8 +44,8 @@ func TestMkdirParents(t *testing.T) {
 
 func TestMkdirWithoutParents(t *testing.T) {
 	res := runIn(t, t.TempDir(), `mkdir a/b`)
-	if res.ExitCode != 1 || !strings.HasPrefix(res.Stderr, "mkdir: a/b: no such file or directory") {
-		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Stderr)
+	if res.ExitCode != 1 || !strings.HasPrefix(res.Output, "mkdir: a/b: no such file or directory") {
+		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Output)
 	}
 }
 
@@ -83,16 +72,16 @@ func TestCpFile(t *testing.T) {
 func TestCpDirWithoutRecursive(t *testing.T) {
 	dir := t.TempDir()
 	res := runIn(t, dir, `mkdir a && cp a b`)
-	if res.ExitCode != 1 || res.Stderr == "" {
-		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Stderr)
+	if res.ExitCode != 1 || res.Output == "" {
+		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Output)
 	}
 	assertMissing(t, filepath.Join(dir, "b"))
 }
 
 func TestCpIntoItself(t *testing.T) {
 	res := runIn(t, t.TempDir(), `mkdir a && cp -r a a`)
-	if res.ExitCode != 1 || res.Stderr == "" {
-		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Stderr)
+	if res.ExitCode != 1 || res.Output == "" {
+		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Output)
 	}
 }
 
@@ -112,16 +101,16 @@ func TestRmForceMissing(t *testing.T) {
 
 func TestRmMissing(t *testing.T) {
 	res := runIn(t, t.TempDir(), `rm missing`)
-	if res.ExitCode != 1 || res.Stderr != "rm: missing: no such file or directory\n" {
-		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Stderr)
+	if res.ExitCode != 1 || res.Output != "rm: missing: no such file or directory\n" {
+		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Output)
 	}
 }
 
 func TestRmDirWithoutRecursive(t *testing.T) {
 	dir := t.TempDir()
 	res := runIn(t, dir, `mkdir a && rm a`)
-	if res.ExitCode != 1 || res.Stderr != "rm: a: is a directory\n" {
-		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Stderr)
+	if res.ExitCode != 1 || res.Output != "rm: a: is a directory\n" {
+		t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Output)
 	}
 }
 
@@ -176,8 +165,8 @@ func TestUnsupportedFlag(t *testing.T) {
 			dir := t.TempDir()
 			runOK(t, dir, `echo x > a`)
 			res := runIn(t, dir, script)
-			if res.ExitCode != 1 || !strings.Contains(res.Stderr, "unsupported option") {
-				t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Stderr)
+			if res.ExitCode != 1 || !strings.Contains(res.Output, "unsupported option") {
+				t.Errorf("exit code = %d, stderr = %q", res.ExitCode, res.Output)
 			}
 			assertFile(t, filepath.Join(dir, "a"), "x\n")
 			assertMissing(t, filepath.Join(dir, "b"))
@@ -194,8 +183,8 @@ func TestDoubleDash(t *testing.T) {
 
 func TestCatStdin(t *testing.T) {
 	res := runIn(t, t.TempDir(), `echo x | cat`)
-	if res.Stdout != "x\n" {
-		t.Errorf("stdout = %q, want %q", res.Stdout, "x\n")
+	if res.Output != "x\n" {
+		t.Errorf("output = %q, want %q", res.Output, "x\n")
 	}
 }
 

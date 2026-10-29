@@ -4,12 +4,21 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync/atomic"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/olymp-software/chiron/internal/apperr"
 	"github.com/olymp-software/chiron/internal/library"
+	"github.com/olymp-software/chiron/internal/runtime"
 	"github.com/olymp-software/chiron/internal/settings"
+)
+
+// Events of a running environment check; their payloads are CheckOutput and
+// CheckExit.
+const (
+	checkOutputEvent = "check:output"
+	checkExitEvent   = "check:exit"
 )
 
 // App is the Wails-bound facade. Its methods delegate to internal packages.
@@ -20,6 +29,8 @@ type App struct {
 	lib      *library.Library
 	settings *settings.Store
 	log      *slog.Logger
+	// runIDs numbers script runs, so the UI can tell events of runs apart.
+	runIDs atomic.Int64
 }
 
 // NewApp creates the bound App.
@@ -68,6 +79,26 @@ type EnterResult struct {
 type TreeResult struct {
 	Tree  library.Tree  `json:"tree"`
 	Error *apperr.Error `json:"error,omitempty"`
+}
+
+// StartCheckResult is the run id of a started environment check or the error
+// that prevented starting it.
+type StartCheckResult struct {
+	RunID int64         `json:"runId"`
+	Error *apperr.Error `json:"error,omitempty"`
+}
+
+// CheckOutput is a batch of decoded output of the check run RunID.
+type CheckOutput struct {
+	RunID int64  `json:"runId"`
+	Text  string `json:"text"`
+}
+
+// CheckExit is the result of the check run RunID, sent after its output.
+type CheckExit struct {
+	RunID    int64 `json:"runId"`
+	ExitCode int   `json:"exitCode"`
+	Stopped  bool  `json:"stopped"`
 }
 
 // ListCourses returns the courses in the library.
@@ -128,6 +159,32 @@ func (a *App) EnterCourse(key string) EnterResult {
 func (a *App) CourseTree(key string) TreeResult {
 	t, err := a.lib.Tree(key)
 	return TreeResult{Tree: t, Error: a.coded(err)}
+}
+
+// StartCheck starts the environment check of a course. Its output and result
+// arrive as check:output and check:exit events with the returned run id;
+// output may arrive before StartCheck returns.
+func (a *App) StartCheck(key string) StartCheckResult {
+	id := a.runIDs.Add(1)
+	b := runtime.NewBatcher(func(text string) {
+		wailsruntime.EventsEmit(a.ctx, checkOutputEvent, CheckOutput{RunID: id, Text: text})
+	})
+	err := a.lib.StartCheck(key, b, func(res runtime.Result) {
+		b.Close()
+		wailsruntime.EventsEmit(a.ctx, checkExitEvent, CheckExit{RunID: id, ExitCode: res.ExitCode, Stopped: res.Stopped})
+	})
+	if err != nil {
+		b.Close()
+		return StartCheckResult{Error: a.coded(err)}
+	}
+	return StartCheckResult{RunID: id}
+}
+
+// CancelCheck stops the running environment check of a course and returns
+// once it has exited; the remembered result is unchanged.
+func (a *App) CancelCheck(key string) ErrorResult {
+	a.lib.StopCheck(key)
+	return ErrorResult{}
 }
 
 // StartCourse returns the storage key of the course to enter on startup: the
