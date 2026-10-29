@@ -60,6 +60,7 @@ export namespace library {
 	    source: string;
 	    key: string;
 	    title: string;
+	    checkHash?: string;
 	    enrolled: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -72,6 +73,7 @@ export namespace library {
 	        this.source = source["source"];
 	        this.key = source["key"];
 	        this.title = source["title"];
+	        this.checkHash = source["checkHash"];
 	        this.enrolled = source["enrolled"];
 	    }
 	}
@@ -80,6 +82,7 @@ export namespace library {
 	    source: string;
 	    key: string;
 	    title: string;
+	    checkHash?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Entry(source);
@@ -91,6 +94,7 @@ export namespace library {
 	        this.source = source["source"];
 	        this.key = source["key"];
 	        this.title = source["title"];
+	        this.checkHash = source["checkHash"];
 	    }
 	}
 	export class Overview {
@@ -98,8 +102,10 @@ export namespace library {
 	    source: string;
 	    key: string;
 	    title: string;
+	    checkHash?: string;
 	    enrolled: boolean;
 	    text: manifest.OverviewText;
+	    check: string;
 	    error?: apperr.Error;
 	
 	    static createFrom(source: any = {}) {
@@ -112,8 +118,10 @@ export namespace library {
 	        this.source = source["source"];
 	        this.key = source["key"];
 	        this.title = source["title"];
+	        this.checkHash = source["checkHash"];
 	        this.enrolled = source["enrolled"];
 	        this.text = this.convertValues(source["text"], manifest.OverviewText);
+	        this.check = source["check"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	
@@ -360,6 +368,38 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.overview = this.convertValues(source["overview"], library.Overview);
+	        this.error = this.convertValues(source["error"], apperr.Error);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StartCheckResult {
+	    runId: number;
+	    error?: apperr.Error;
+	
+	    static createFrom(source: any = {}) {
+	        return new StartCheckResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.runId = source["runId"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	

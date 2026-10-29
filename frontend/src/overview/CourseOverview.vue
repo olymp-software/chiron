@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { CourseOverview, EnrollCourse, SyncCourse } from '../../wailsjs/go/main/App'
 import type { apperr, library } from '../../wailsjs/go/models'
 import ErrorView from '../errors/ErrorView.vue'
 import { courseImages } from '../markdown/images'
 import MarkdownView from '../markdown/MarkdownView.vue'
+import CheckModal from './CheckModal.vue'
 
 const props = defineProps<{ courseKey: string }>()
 
@@ -17,6 +18,18 @@ const overview = ref<library.Overview>()
 const error = ref<apperr.Error>()
 const syncing = ref(false)
 const enrolling = ref(false)
+const checking = ref(false)
+
+// blocked is true while Enroll and Continue are unavailable: the course is
+// broken or its environment check has not passed for the current check file.
+const blocked = computed(
+  () => !!overview.value?.error || (!!overview.value?.check && overview.value.check !== 'passed'),
+)
+
+async function checkClosed() {
+  checking.value = false
+  await load()
+}
 
 async function load() {
   const res = await CourseOverview(props.courseKey)
@@ -77,17 +90,24 @@ onMounted(load)
         <button v-if="overview.origin === 'local'" :disabled="syncing" @click="sync">
           {{ syncing ? $t('overview.syncing') : $t('overview.sync') }}
         </button>
+        <button v-if="overview.check" :disabled="syncing" @click="checking = true">
+          {{ $t('overview.checkEnvironment') }}
+        </button>
         <button
           v-if="overview.enrolled"
-          :disabled="!!overview.error || syncing"
+          :disabled="blocked || syncing"
           @click="router.push(`/courses/${courseKey}`)"
         >
           {{ $t('overview.continue') }}
         </button>
-        <button v-else :disabled="!!overview.error || syncing || enrolling" @click="enroll">
+        <button v-else :disabled="blocked || syncing || enrolling" @click="enroll">
           {{ $t('overview.enroll') }}
         </button>
       </div>
+      <p v-if="overview.check" class="check-status" :class="overview.check">
+        {{ $t(`overview.checkStatus.${overview.check}`) }}
+      </p>
+      <CheckModal v-if="checking" :course-key="courseKey" @closed="checkClosed" />
     </template>
     <ErrorView v-if="error" :error="error" />
     <template v-if="overview">
@@ -131,6 +151,18 @@ dl {
 dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.check-status {
+  margin: 0;
+}
+
+.check-status.passed {
+  color: #26a269;
+}
+
+.check-status.changed {
+  color: #c01c28;
 }
 
 .description {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"log/slog"
@@ -54,6 +55,8 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		Logger:           wailsLogger{log: log},
 		OnStartup:        app.startup,
+		// Scripts still running when the app closes are killed.
+		OnShutdown: func(context.Context) { lib.StopAll() },
 		Bind: []any{
 			app,
 		},

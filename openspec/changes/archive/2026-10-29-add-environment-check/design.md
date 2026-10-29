@@ -49,7 +49,7 @@ The runner replaces the interpreter's default exec handler with its own: it reso
 
 - A `runtime` decoder holds back an incomplete trailing UTF-8 sequence until the next write and replaces invalid bytes with `U+FFFD` (`strings.ToValidUTF8`), so a multi-byte character split across reads is not broken.
 - A batcher flushes decoded text every 75 ms (and at exit) as one Wails event, so endless output costs at most ~13 events per second.
-- The frontend renders: `scripts/ansi.ts` parses SGR into styled spans, applies `\r` as return to line start, strips other CSI/OSC sequences; `scripts/OutputPanel.vue` keeps the last 10,000 lines. Both are generic, for reuse by controls.
+- The frontend renders: `scripts/ansi.ts` parses SGR into styled spans, applies `\r` as return to line start, strips other CSI/OSC sequences; `scripts/OutputPanel.vue` keeps the last 10,000 lines in a panel of fixed height and renders only the lines in view (virtual scrolling): lines have a fixed height and do not wrap, long lines scroll horizontally. Both are generic, for reuse by controls.
 - *Alternative: send bytes (base64) and decode with `TextDecoder` in the frontend.* Works, but the decoder is easier to test in Go and the event payload is smaller.
 
 ### Check orchestration in `internal/library`
@@ -76,7 +76,7 @@ The runner replaces the interpreter's default exec handler with its own: it reso
 
 ### Frontend
 
-- `overview/CheckModal.vue`: `<dialog>` opened with `showModal()` (blocks the rest of the window), `@cancel.prevent` so Escape does not close it; Cancel calls `CancelCheck` and waits for `check:exit`; after exit shows the exit code with a green or red mark, or "stopped", and OK closes the modal and emits `closed`, after which `CourseOverview` reloads the overview to get the new status.
+- `overview/CheckModal.vue`: `<dialog>` opened with `showModal()` (blocks the rest of the window), `@cancel.prevent` so Escape does not close it; Cancel calls `CancelCheck`, which returns once the run has stopped and is no longer registered, then closes the modal and emits `closed` (if `CancelCheck` fails, the modal stays open with the error and OK); after the check exits on its own the modal shows the exit code with a green or red mark, and OK closes the modal and emits `closed`, after which `CourseOverview` reloads the overview to get the new status.
 - `CourseOverview.vue`: shows "Check environment" and the status when `overview.check` is set; Enroll/Continue are disabled unless the status is `passed` or there is no check.
 
 ### Error codes

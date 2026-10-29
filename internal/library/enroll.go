@@ -28,11 +28,15 @@ type TreeActivity struct {
 }
 
 // Enroll enrolls the course with key with its first activity as the current
-// activity. course.yaml must be valid. An enrolled course keeps its progress.
+// activity. course.yaml must be valid and the environment check, if declared,
+// satisfied. An enrolled course keeps its progress.
 func (l *Library) Enroll(key string) error {
-	c, err := l.course(key)
+	e, c, err := l.course(key)
 	if err != nil {
 		return err
+	}
+	if !l.checkSatisfied(e, c) {
+		return apperr.New(apperr.CheckRequired)
 	}
 	if err := l.progress.Enroll(key, order(c)[0]); err != nil {
 		return err
@@ -51,11 +55,13 @@ func (l *Library) Enter(key string) (string, error) {
 	if !l.enrolled(key) {
 		return "", apperr.New(apperr.NotEnrolled)
 	}
-	c, err := l.course(key)
+	e, c, err := l.course(key)
 	if err != nil {
 		return "", err
 	}
-	// The environment check gates entering here once it exists.
+	if !l.checkSatisfied(e, c) {
+		return "", apperr.New(apperr.CheckRequired)
+	}
 	slugs := order(c)
 	p, err := l.progress.Update(key, func(p progress.Progress) progress.Progress {
 		return progress.Resolve(slugs, p)
@@ -68,7 +74,7 @@ func (l *Library) Enter(key string) (string, error) {
 
 // Tree returns the course tree of the enrolled course with key.
 func (l *Library) Tree(key string) (Tree, error) {
-	c, err := l.course(key)
+	_, c, err := l.course(key)
 	if err != nil {
 		return Tree{}, err
 	}
@@ -87,15 +93,17 @@ func (l *Library) Tree(key string) (Tree, error) {
 	return t, nil
 }
 
-// course reads course.yaml of the course with key in the library.
-func (l *Library) course(key string) (*manifest.Course, error) {
+// course returns the library entry of the course with key and its
+// course.yaml.
+func (l *Library) course(key string) (Entry, *manifest.Course, error) {
 	e, err := l.entry(key)
 	if err != nil {
-		return nil, err
+		return Entry{}, nil, err
 	}
 	unlock := l.lockCourse(e.Key)
 	defer unlock()
-	return manifest.ParseCourse(l.CopyPath(e.Key))
+	c, err := manifest.ParseCourse(l.CopyPath(e.Key))
+	return e, c, err
 }
 
 // order returns the activity slugs of c in course order.

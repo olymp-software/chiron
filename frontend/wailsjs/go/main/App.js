@@ -6,6 +6,10 @@ export function AddLocalCourse(arg1) {
   return window['go']['main']['App']['AddLocalCourse'](arg1);
 }
 
+export function CancelCheck(arg1) {
+  return window['go']['main']['App']['CancelCheck'](arg1);
+}
+
 export function CourseOverview(arg1) {
   return window['go']['main']['App']['CourseOverview'](arg1);
 }
@@ -28,6 +32,10 @@ export function ListCourses() {
 
 export function PickFolder(arg1) {
   return window['go']['main']['App']['PickFolder'](arg1);
+}
+
+export function StartCheck(arg1) {
+  return window['go']['main']['App']['StartCheck'](arg1);
 }
 
 export function StartCourse() {

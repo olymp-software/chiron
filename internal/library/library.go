@@ -33,12 +33,14 @@ const (
 	OriginRepo  Origin = "repo"
 )
 
-// Entry is one added course.
+// Entry is one added course. CheckHash is the SHA-256 (lowercase hex) of the
+// check file the environment check last succeeded for, "" if none.
 type Entry struct {
-	Origin Origin `json:"origin"`
-	Source string `json:"source"`
-	Key    string `json:"key"`
-	Title  string `json:"title"`
+	Origin    Origin `json:"origin"`
+	Source    string `json:"source"`
+	Key       string `json:"key"`
+	Title     string `json:"title"`
+	CheckHash string `json:"checkHash,omitempty"`
 }
 
 // Course is a course in the library list. Enrolled is not stored in
@@ -64,12 +66,16 @@ type Library struct {
 	mu sync.Mutex
 	// courseLocks serializes changes of one course copy, keyed by storage key.
 	courseLocks sync.Map
+
+	// checksMu guards checks, the running environment checks by storage key.
+	checksMu sync.Mutex
+	checks   map[string]*check
 }
 
 // Open opens the library in dataDir and repairs course copies left by an
 // interrupted add or Sync.
 func Open(dataDir string, log *slog.Logger) (*Library, error) {
-	l := &Library{dataDir: dataDir, log: log}
+	l := &Library{dataDir: dataDir, log: log, checks: map[string]*check{}}
 	if err := os.MkdirAll(l.coursesPath(), 0o755); err != nil {
 		log.Error("create courses folder", "err", err)
 		return nil, apperr.New(apperr.LibraryWriteFailed)

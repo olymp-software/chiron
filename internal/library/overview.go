@@ -13,7 +13,10 @@ type Overview struct {
 	Entry
 	Enrolled bool                  `json:"enrolled"`
 	Text     manifest.OverviewText `json:"text"`
-	Error    *apperr.Error         `json:"error,omitempty"`
+	// Check is the environment check status: "" (no check or invalid
+	// course.yaml), CheckNotChecked, CheckPassed or CheckChanged.
+	Check string        `json:"check"`
+	Error *apperr.Error `json:"error,omitempty"`
 }
 
 // Overview reads the course overview from the course copy. Only a missing
@@ -27,6 +30,7 @@ func (l *Library) Overview(key string) (Overview, error) {
 	root := l.CopyPath(e.Key)
 	c, err := manifest.ParseCourse(root)
 	if err == nil {
+		o.Check = l.checkStatus(e, c)
 		o.Text, err = manifest.ReadOverview(root, c)
 	}
 	if err != nil {

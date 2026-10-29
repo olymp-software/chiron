@@ -30,6 +30,9 @@ export const errorCodes = [
   'notEnrolled',
   'progressReadFailed',
   'progressWriteFailed',
+  'checkRequired',
+  'checkRunning',
+  'checkReadFailed',
   'internal',
 ] as const
 
