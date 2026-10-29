@@ -13,6 +13,7 @@ import (
 
 	"github.com/olymp-software/chiron/internal/library"
 	"github.com/olymp-software/chiron/internal/platform"
+	"github.com/olymp-software/chiron/internal/settings"
 )
 
 //go:embed all:frontend/dist
@@ -39,7 +40,7 @@ func main() {
 		log.Error("open library", "err", err)
 		os.Exit(1)
 	}
-	app := NewApp(lib, log)
+	app := NewApp(lib, settings.Open(dataDir, log), log)
 
 	err = wails.Run(&options.App{
 		Title:  "Chiron",

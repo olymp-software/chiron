@@ -41,7 +41,8 @@ Every navigation the learner starts uses `router.push`: library ↔ overview ↔
 - *Alternative: replace for the dropdown:* replace swaps only the top entry, so Back after a switch lands on an older activity of the previous course instead of where the learner was.
 
 ### Back input
-The app listens for `mouseup` with button 3 (back) and `keydown` Alt+ArrowLeft on `window`, calls `preventDefault` and `router.back()`. The overview's back button calls `router.back()` when `history.state.back` (set by vue-router) is not null, and pushes `/library` otherwise (the overview was opened by the startup redirect).
+The app listens for `mouseup` with button 3 (back) and `keydown` Alt+ArrowLeft on `window`, calls `preventDefault` and `router.back()`. The overview's Library button always pushes `/library`; the way back to the course screen is Continue.
+- *Alternative: the overview's button acts as Back:* opened with Overview from the course screen, a button labeled Library would lead back to the course.
 - *Alternative: rely on WebView2's own back handling:* whether Wails leaves browser accelerator keys enabled is not something the app controls or tests; handling it explicitly gives one behavior. See Risks for a double back.
 
 ### Entering a course in one Go call

@@ -49,6 +49,11 @@ const (
 	LibraryReadFailed  Code = "libraryReadFailed"
 	LibraryWriteFailed Code = "libraryWriteFailed"
 
+	// Enrollment and progress.
+	NotEnrolled         Code = "notEnrolled"
+	ProgressReadFailed  Code = "progressReadFailed"
+	ProgressWriteFailed Code = "progressWriteFailed"
+
 	// Internal is a failure that is a bug in the app; details are in the log.
 	Internal Code = "internal"
 )
@@ -81,6 +86,9 @@ var All = []Code{
 	LibraryNewerFormat,
 	LibraryReadFailed,
 	LibraryWriteFailed,
+	NotEnrolled,
+	ProgressReadFailed,
+	ProgressWriteFailed,
 	Internal,
 }
 

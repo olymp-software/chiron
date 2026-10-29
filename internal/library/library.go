@@ -13,6 +13,7 @@ import (
 
 	"github.com/olymp-software/chiron/internal/apperr"
 	"github.com/olymp-software/chiron/internal/platform"
+	"github.com/olymp-software/chiron/internal/progress"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 	// formatVersion is the library.json format this app reads and writes.
 	formatVersion = 1
 	coursesDir    = "courses"
+	stateDir      = "state"
 )
 
 // Origin tells where a course comes from.
@@ -39,6 +41,13 @@ type Entry struct {
 	Title  string `json:"title"`
 }
 
+// Course is a course in the library list. Enrolled is not stored in
+// library.json: a course is enrolled exactly when it has progress.
+type Course struct {
+	Entry
+	Enrolled bool `json:"enrolled"`
+}
+
 type libraryFile struct {
 	Version int     `json:"version"`
 	Courses []Entry `json:"courses"`
@@ -47,8 +56,9 @@ type libraryFile struct {
 // Library is the learner's library in a data folder. Its methods are safe for
 // concurrent use; errors are *apperr.Error.
 type Library struct {
-	dataDir string
-	log     *slog.Logger
+	dataDir  string
+	log      *slog.Logger
+	progress *progress.Store
 
 	// mu serializes reads and writes of library.json.
 	mu sync.Mutex
@@ -64,10 +74,35 @@ func Open(dataDir string, log *slog.Logger) (*Library, error) {
 		log.Error("create courses folder", "err", err)
 		return nil, apperr.New(apperr.LibraryWriteFailed)
 	}
+	p, err := progress.Open(filepath.Join(dataDir, stateDir), log)
+	if err != nil {
+		return nil, err
+	}
+	l.progress = p
 	if err := l.recover(); err != nil {
 		return nil, err
 	}
 	return l, nil
+}
+
+// Courses returns the added courses with their stored titles and enrollment.
+func (l *Library) Courses() ([]Course, error) {
+	entries, err := l.List()
+	if err != nil {
+		return nil, err
+	}
+	courses := make([]Course, len(entries))
+	for i, e := range entries {
+		courses[i] = Course{Entry: e, Enrolled: l.enrolled(e.Key)}
+	}
+	return courses, nil
+}
+
+// enrolled reports whether the course with key has progress. A progress file
+// that cannot be checked is logged and counts as none.
+func (l *Library) enrolled(key string) bool {
+	ok, _ := l.progress.Exists(key)
+	return ok
 }
 
 // List returns the added courses with their stored titles.
@@ -84,18 +119,18 @@ func (l *Library) List() ([]Entry, error) {
 	return f.Courses, nil
 }
 
-// entry returns the library entry with exactly the stored source.
-func (l *Library) entry(source string) (Entry, error) {
+// entry returns the library entry with the storage key.
+func (l *Library) entry(key string) (Entry, error) {
 	courses, err := l.List()
 	if err != nil {
 		return Entry{}, err
 	}
 	for _, e := range courses {
-		if e.Source == source {
+		if e.Key == key {
 			return e, nil
 		}
 	}
-	return Entry{}, apperr.New(apperr.CourseNotFound, "source", source)
+	return Entry{}, apperr.New(apperr.CourseNotFound, "key", key)
 }
 
 // update applies change to library.json under the lock.

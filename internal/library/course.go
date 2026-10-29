@@ -87,8 +87,8 @@ func (l *Library) findSame(src string) (Entry, bool, error) {
 // its folder. The new copy is not validated; the stored title is updated only
 // if its course.yaml is valid. If the folder cannot be copied, the copy is
 // left unchanged.
-func (l *Library) Sync(src string) (Entry, error) {
-	e, err := l.entry(src)
+func (l *Library) Sync(key string) (Entry, error) {
+	e, err := l.entry(key)
 	if err != nil {
 		return Entry{}, err
 	}

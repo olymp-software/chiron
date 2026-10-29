@@ -11,18 +11,19 @@ import (
 // overview: its stored title and the course error instead of the text.
 type Overview struct {
 	Entry
-	Text  manifest.OverviewText `json:"text"`
-	Error *apperr.Error         `json:"error,omitempty"`
+	Enrolled bool                  `json:"enrolled"`
+	Text     manifest.OverviewText `json:"text"`
+	Error    *apperr.Error         `json:"error,omitempty"`
 }
 
 // Overview reads the course overview from the course copy. Only a missing
 // course or an unreadable library is returned as an error.
-func (l *Library) Overview(src string) (Overview, error) {
-	e, err := l.entry(src)
+func (l *Library) Overview(key string) (Overview, error) {
+	e, err := l.entry(key)
 	if err != nil {
 		return Overview{}, err
 	}
-	o := Overview{Entry: e}
+	o := Overview{Entry: e, Enrolled: l.enrolled(e.Key)}
 	root := l.CopyPath(e.Key)
 	c, err := manifest.ParseCourse(root)
 	if err == nil {

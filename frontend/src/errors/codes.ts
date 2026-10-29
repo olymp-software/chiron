@@ -27,6 +27,9 @@ export const errorCodes = [
   'libraryNewerFormat',
   'libraryReadFailed',
   'libraryWriteFailed',
+  'notEnrolled',
+  'progressReadFailed',
+  'progressWriteFailed',
   'internal',
 ] as const
 
