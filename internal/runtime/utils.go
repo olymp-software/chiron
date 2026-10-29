@@ -36,7 +36,7 @@ func utilitiesHandler(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 			return next(ctx, args)
 		}
 		hc := interp.HandlerCtx(ctx)
-		c := &call{name: args[0], dir: hc.Dir, stdin: hc.Stdin, stdout: hc.Stdout, stderr: hc.Stderr}
+		c := &call{ctx: ctx, name: args[0], dir: hc.Dir, stdin: hc.Stdin, stdout: hc.Stdout, stderr: hc.Stderr}
 		u(c, args[1:])
 		if c.failed {
 			return interp.ExitStatus(1)
@@ -47,6 +47,7 @@ func utilitiesHandler(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 
 // call is the state of one utility invocation.
 type call struct {
+	ctx    context.Context
 	name   string
 	dir    string
 	stdin  io.Reader
@@ -102,6 +103,22 @@ func (c *call) flags(args []string, allowed string) (set map[rune]bool, operands
 	return set, operands, true
 }
 
+// reader returns r that fails once the run is stopped, so copying an endless
+// source such as /dev/zero ends.
+func (c *call) reader(r io.Reader) io.Reader { return ctxReader{c.ctx, r} }
+
+type ctxReader struct {
+	ctx context.Context
+	r   io.Reader
+}
+
+func (r ctxReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.r.Read(p)
+}
+
 func reason(err error) string {
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -133,18 +150,18 @@ func cat(c *call, args []string) {
 	}
 	for _, name := range operands {
 		if name == "-" {
-			if _, err := io.Copy(c.stdout, c.stdin); err != nil {
+			if _, err := io.Copy(c.stdout, c.reader(c.stdin)); err != nil {
 				c.failPath(name, err)
 			}
 			continue
 		}
-		if err := catFile(c.stdout, c.path(name)); err != nil {
+		if err := c.catFile(c.path(name)); err != nil {
 			c.failPath(name, err)
 		}
 	}
 }
 
-func catFile(w io.Writer, path string) error {
+func (c *call) catFile(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -155,7 +172,7 @@ func catFile(w io.Writer, path string) error {
 	} else if info.IsDir() {
 		return errors.New("is a directory")
 	}
-	_, err = io.Copy(w, f)
+	_, err = io.Copy(c.stdout, c.reader(f))
 	return err
 }
 
@@ -366,7 +383,7 @@ func (c *call) copy(t target) error {
 		return fmt.Errorf("'%s' and '%s' are the same file", t.src, t.dst)
 	}
 	if !srcInfo.IsDir() {
-		return copyFile(src, dst, srcInfo.Mode().Perm())
+		return c.copyFile(src, dst, srcInfo.Mode().Perm())
 	}
 	if rel, err := filepath.Rel(src, dst); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("cannot copy a directory into itself, '%s'", t.dst)
@@ -387,11 +404,11 @@ func (c *call) copy(t target) error {
 		if info.IsDir() {
 			return os.MkdirAll(to, info.Mode().Perm()|0o700)
 		}
-		return copyFile(p, to, info.Mode().Perm())
+		return c.copyFile(p, to, info.Mode().Perm())
 	})
 }
 
-func copyFile(src, dst string, perm fs.FileMode) error {
+func (c *call) copyFile(src, dst string, perm fs.FileMode) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -401,7 +418,7 @@ func copyFile(src, dst string, perm fs.FileMode) error {
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(out, in); err != nil {
+	if _, err := io.Copy(out, c.reader(in)); err != nil {
 		_ = out.Close()
 		return err
 	}

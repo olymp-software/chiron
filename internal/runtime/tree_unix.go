@@ -3,7 +3,9 @@
 package runtime
 
 import (
+	"errors"
 	"os/exec"
+	"slices"
 	"sync"
 	"syscall"
 )
@@ -37,6 +39,20 @@ func (t *tree) add(cmd *exec.Cmd) error {
 	}
 	t.pgids = append(t.pgids, pgid)
 	return nil
+}
+
+// release forgets the group of cmd, which has been waited for, once no
+// process is left in it: its id may then be reused by an unrelated group,
+// which kill must not hit. A group whose processes outlive cmd stays
+// registered; the id cannot be reused while any of them runs.
+func (t *tree) release(cmd *exec.Cmd) {
+	pgid := cmd.Process.Pid
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if err := syscall.Kill(-pgid, 0); !errors.Is(err, syscall.ESRCH) {
+		return
+	}
+	t.pgids = slices.DeleteFunc(t.pgids, func(p int) bool { return p == pgid })
 }
 
 // kill kills every registered process group.

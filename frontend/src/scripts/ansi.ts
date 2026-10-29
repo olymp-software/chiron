@@ -163,7 +163,9 @@ function sequenceEnd(s: string, i: number): number {
 
 // applySGR returns style changed by the parameters of an SGR sequence.
 function applySGR(style: Style, params: string): Style {
-  const codes = params === '' ? [0] : params.split(/[;:]/).map((p) => (p === '' ? 0 : Number(p)))
+  // Parameters are separated by ";"; a parameter may have ":" subparameters.
+  const groups = params.split(';').map((g) => g.split(':'))
+  const codes = groups.map((g) => param(g[0]))
   let next: Style = { ...style }
   for (let i = 0; i < codes.length; i++) {
     const code = codes[i]
@@ -182,27 +184,55 @@ function applySGR(style: Style, params: string): Style {
     else if (code >= 100 && code <= 107) next.bg = code - 100 + 8
     else if (code === 49) next.bg = undefined
     else if (code === 38 || code === 48) {
-      const [color, used] = extendedColor(codes, i + 1)
+      let color: Color | undefined
+      if (groups[i].length > 1) {
+        color = colonColor(groups[i].slice(1))
+      } else {
+        let used: number
+        ;[color, used] = extendedColor(codes, i + 1)
+        i += used
+      }
       if (code === 38) next.fg = color
       else next.bg = color
-      i += used
     }
   }
   return next
 }
 
+// param returns the value of an SGR parameter; an empty one is 0.
+function param(p: string): number {
+  return p === '' ? 0 : Number(p)
+}
+
+// colonColor reads the subparameters of a color in colon form: 5:n, 2:r:g:b
+// or ITU T.416 2:cs:r:g:b with a color space id that may be empty.
+function colonColor(sub: string[]): Color | undefined {
+  const codes = sub.map(param)
+  if (codes[0] === 2 && codes.length >= 5) {
+    return extendedColor([2, ...codes.slice(2)], 0)[0]
+  }
+  return extendedColor(codes, 0)[0]
+}
+
 // extendedColor reads a 256-color (5;n) or RGB (2;r;g;b) color from codes
-// at i and returns it with the number of codes used.
+// at i and returns it with the number of codes used. A value outside 0-255
+// gives no color.
 function extendedColor(codes: number[], i: number): [Color | undefined, number] {
   if (codes[i] === 5 && i + 1 < codes.length) {
     const n = codes[i + 1]
+    if (!isByte(n)) return [undefined, 2]
     return [n < 16 ? n : xterm256(n), 2]
   }
   if (codes[i] === 2 && i + 3 < codes.length) {
     const [r, g, b] = codes.slice(i + 1, i + 4)
+    if (![r, g, b].every(isByte)) return [undefined, 4]
     return [`rgb(${r}, ${g}, ${b})`, 4]
   }
   return [undefined, codes.length - i]
+}
+
+function isByte(n: number): boolean {
+  return Number.isInteger(n) && n >= 0 && n <= 255
 }
 
 // xterm256 returns the CSS color of an xterm 256-color index from 16 on.

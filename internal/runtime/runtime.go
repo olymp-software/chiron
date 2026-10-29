@@ -10,6 +10,7 @@ import (
 	"io"
 	"os/exec"
 	goruntime "runtime"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -23,6 +24,11 @@ import (
 // waitDelay bounds how long a finished command's output is read when a
 // process it started still holds the output pipe.
 const waitDelay = time.Second
+
+// abandonDelay is how long Stop gives the interpreter to return. A built-in
+// blocked where the stop cannot reach it, such as opening a FIFO, is left
+// behind and the run counts as stopped.
+var abandonDelay = 3 * time.Second
 
 // Spec is a script to run. Name is the script's file name used in parse
 // errors; Env is the inherited environment as key=value pairs.
@@ -47,29 +53,47 @@ type Run struct {
 	stopOnce sync.Once
 	done     chan struct{}
 
-	// stopped and res are written before done is closed.
-	mu      sync.Mutex
+	mu sync.Mutex
+	// exited is set once the script has exited on its own or after Stop;
+	// a later Stop no longer changes the result.
+	exited  bool
 	stopped bool
-	res     Result
+	// finished and res are set before done is closed.
+	finished bool
+	res      Result
 }
 
 // Start runs the script in the background. stdout and stderr go to out in the
-// order they are written; stdin is empty. A script that cannot be parsed
-// writes the parse error to out and exits with code 2.
+// order they are written, so out must be safe for concurrent use; stdin is
+// empty. A script that cannot be parsed writes the parse error to out and
+// exits with code 2.
 func Start(spec Spec, out io.Writer) *Run {
 	ctx, cancel := context.WithCancel(context.Background())
 	r := &Run{cancel: cancel, done: make(chan struct{})}
 	r.tree = newTree()
 	go func() {
-		defer close(r.done)
-		code := r.run(ctx, spec, &lockedWriter{w: out})
+		code := r.run(ctx, spec, out)
+		r.mu.Lock()
+		r.exited = true
+		stopped := r.stopped
+		r.mu.Unlock()
 		r.tree.close()
 		cancel()
-		r.mu.Lock()
-		r.res = Result{ExitCode: code, Stopped: r.stopped}
-		r.mu.Unlock()
+		r.finish(Result{ExitCode: code, Stopped: stopped})
 	}()
 	return r
+}
+
+// finish records the result and ends Wait; only the first call counts.
+func (r *Run) finish(res Result) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.finished {
+		return
+	}
+	r.finished = true
+	r.res = res
+	close(r.done)
 }
 
 // Wait waits for the script to exit and returns its result. Processes the
@@ -82,14 +106,29 @@ func (r *Run) Wait() Result {
 }
 
 // Stop kills the script with all its processes at once and returns without
-// waiting. Stopping a finished or stopped run does nothing.
+// waiting. Stopping a finished or stopped run does nothing. If the
+// interpreter does not return within abandonDelay, Wait returns a stopped
+// result anyway.
 func (r *Run) Stop() {
 	r.stopOnce.Do(func() {
 		r.mu.Lock()
+		if r.exited {
+			r.mu.Unlock()
+			return
+		}
 		r.stopped = true
 		r.mu.Unlock()
 		r.cancel()
 		r.tree.kill()
+		go func() {
+			t := time.NewTimer(abandonDelay)
+			defer t.Stop()
+			select {
+			case <-r.done:
+			case <-t.C:
+				r.finish(Result{Stopped: true})
+			}
+		}()
 	})
 }
 
@@ -161,6 +200,7 @@ func (r *Run) execHandler(interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 			return interp.ExitStatus(126)
 		}
 		err = cmd.Wait()
+		r.tree.release(cmd)
 		var exitErr *exec.ExitError
 		switch {
 		case err == nil, errors.Is(err, exec.ErrWaitDelay):
@@ -176,18 +216,19 @@ func (r *Run) execHandler(interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 	}
 }
 
-// execEnv returns the exported variables of env as key=value pairs, like the
-// interpreter's default exec handler does.
+// execEnv returns the exported variables of env as key=value pairs. It
+// follows the unexported execEnv of mvdan.cc/sh/v3/interp, which the default
+// exec handler uses; recheck it when upgrading that module. Unlike it, names
+// compare case-insensitively on Windows, where the environment does.
 func execEnv(env expand.Environ) []string {
 	var list []string
 	for name, vr := range env.Each {
 		if !vr.IsSet() {
 			// Unset in the script but inherited: drop the inherited value.
-			for i, kv := range list {
-				if strings.HasPrefix(kv, name+"=") {
-					list[i] = ""
-				}
-			}
+			list = slices.DeleteFunc(list, func(kv string) bool {
+				n, _, _ := strings.Cut(kv, "=")
+				return sameEnvName(n, name)
+			})
 		}
 		if vr.Exported && vr.Kind == expand.String {
 			list = append(list, name+"="+vr.String())
@@ -196,15 +237,9 @@ func execEnv(env expand.Environ) []string {
 	return list
 }
 
-// lockedWriter serializes writes from the interpreter and the copying
-// goroutines of external commands.
-type lockedWriter struct {
-	mu sync.Mutex
-	w  io.Writer
-}
-
-func (l *lockedWriter) Write(p []byte) (int, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.w.Write(p)
+func sameEnvName(a, b string) bool {
+	if goruntime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
 }

@@ -46,6 +46,23 @@ describe('Terminal', () => {
     ])
   })
 
+  it('renders colors in colon form', () => {
+    const [line] = render(
+      '\x1b[38:2::255:0:0ma\x1b[38:2:0:0:255:0mb\x1b[38:2:0:0:255mc\x1b[1;48:5:196md',
+    )
+    expect(line).toEqual([
+      { text: 'a', cls: '', css: 'color: rgb(255, 0, 0)' },
+      { text: 'b', cls: '', css: 'color: rgb(0, 255, 0)' },
+      { text: 'c', cls: '', css: 'color: rgb(0, 0, 255)' },
+      { text: 'd', cls: 'bold', css: 'color: rgb(0, 0, 255); background-color: rgb(255, 0, 0)' },
+    ])
+  })
+
+  it('ignores color values outside 0-255', () => {
+    const [line] = render('\x1b[38;5;300ma\x1b[38;2;1;256;3mb\x1b[38:5:999mc')
+    expect(line).toEqual([{ text: 'abc', cls: '', css: '' }])
+  })
+
   it('keeps the style across writes and split sequences', () => {
     const [line] = render('\x1b[3', '2mgr', 'een\x1b', '[0m!')
     expect(line).toEqual([

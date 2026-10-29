@@ -29,6 +29,7 @@ export function useCheckRun(courseKey: string, onOutput: (text: string) => void)
   let runId: number | undefined
   let held: CheckEvent[] = []
   let offs: (() => void)[] = []
+  let disposed = false
 
   function handle(e: CheckEvent) {
     if (runId === undefined) {
@@ -54,6 +55,10 @@ export function useCheckRun(courseKey: string, onOutput: (text: string) => void)
       return
     }
     runId = res.runId
+    if (disposed) {
+      void CancelCheck(courseKey)
+      return
+    }
     const events = held
     held = []
     events.forEach(handle)
@@ -71,9 +76,15 @@ export function useCheckRun(courseKey: string, onOutput: (text: string) => void)
     return true
   }
 
+  // dispose drops the event subscriptions and stops a check that is still
+  // running, so leaving the view never leaves a check nobody can cancel.
   function dispose() {
+    disposed = true
     offs.forEach((off) => off())
     offs = []
+    if (runId !== undefined && running.value && !cancelling.value) {
+      void CancelCheck(courseKey)
+    }
   }
 
   return { exit, error, cancelling, running, start, cancel, dispose }
