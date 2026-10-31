@@ -91,10 +91,18 @@ describe('activityImages', () => {
     expect(resolve('images/../diagram.png')).toBe('/course-files/k/basics/hello/diagram.png')
   })
 
-  it.each(['../../images/logo.png', '../other/a.png', 'https://example.com/a.png'])(
-    'does not load %s',
-    (src) => {
-      expect(resolve(src)).toBeNull()
-    },
-  )
+  it.each([
+    '../../images/logo.png',
+    '../other/a.png',
+    'https://example.com/a.png',
+    '%2e%2e/%2e%2e/images/logo.png',
+    '%2E%2E/%2E%2E/images/logo.png',
+    '..%2f..%2fimages/logo.png',
+    '..\\..\\images\\logo.png',
+    '..%5C..%5Cimages/logo.png',
+    '%2fetc/a.png',
+    'broken%zz.png',
+  ])('does not load %s', (src) => {
+    expect(resolve(src)).toBeNull()
+  })
 })

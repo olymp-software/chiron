@@ -21,7 +21,6 @@ type Activity struct {
 	Type            string        `json:"type"`
 	TheoryBlocks    []TheoryBlock `json:"theoryBlocks"`
 	Last            bool          `json:"last"`
-	Completed       bool          `json:"completed"`
 	CourseCompleted bool          `json:"courseCompleted"`
 	Error           *apperr.Error `json:"error,omitempty"`
 }
@@ -65,14 +64,15 @@ func (l *Library) Activity(key, slug string) (Activity, error) {
 		Title:           ref.Title,
 		Dir:             section + "/" + slug,
 		Last:            i == len(slugs)-1,
-		Completed:       slices.Contains(p.Completed, slug),
 		CourseCompleted: p.CourseCompleted,
 	}
 	parsed, err := manifest.ParseActivity(root, section, slug)
 	if err != nil {
+		// Even an app failure stays an activity error, so Next keeps working.
 		var ae *apperr.Error
 		if !errors.As(err, &ae) {
-			return Activity{}, err
+			l.log.Error("parse activity", "key", e.Key, "slug", slug, "err", err)
+			ae = apperr.New(apperr.Internal)
 		}
 		a.Error = ae
 		return a, nil
@@ -92,7 +92,14 @@ func (l *Library) Activity(key, slug string) (Activity, error) {
 // course tree. activity.yaml is not read, so a broken activity can be
 // completed.
 func (l *Library) CompleteActivity(key, slug string) (string, Tree, error) {
-	e, c, err := l.course(key)
+	e, err := l.entry(key)
+	if err != nil {
+		return "", Tree{}, err
+	}
+	// The progress must not be computed from an order Sync has just replaced.
+	unlock := l.lockCourse(e.Key)
+	defer unlock()
+	c, err := manifest.ParseCourse(l.CopyPath(e.Key))
 	if err != nil {
 		return "", Tree{}, err
 	}

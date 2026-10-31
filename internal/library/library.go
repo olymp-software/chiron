@@ -112,10 +112,11 @@ func (l *Library) Courses() ([]Course, error) {
 // from its progress alone. An unreadable progress file is logged and counts
 // as not completed.
 func (l *Library) enrollment(key string) (enrolled, completed bool) {
-	if !l.enrolled(key) {
+	p, err := l.progress.Load(key)
+	var ae *apperr.Error
+	if errors.As(err, &ae) && ae.Code == apperr.NotEnrolled {
 		return false, false
 	}
-	p, err := l.progress.Load(key)
 	return true, err == nil && p.CourseCompleted
 }
 

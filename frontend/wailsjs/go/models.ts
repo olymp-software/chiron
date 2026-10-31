@@ -76,7 +76,6 @@ export namespace library {
 	    type: string;
 	    theoryBlocks: TheoryBlock[];
 	    last: boolean;
-	    completed: boolean;
 	    courseCompleted: boolean;
 	    error?: apperr.Error;
 	
@@ -92,7 +91,6 @@ export namespace library {
 	        this.type = source["type"];
 	        this.theoryBlocks = this.convertValues(source["theoryBlocks"], TheoryBlock);
 	        this.last = source["last"];
-	        this.completed = source["completed"];
 	        this.courseCompleted = source["courseCompleted"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }

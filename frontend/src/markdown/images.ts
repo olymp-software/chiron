@@ -22,16 +22,27 @@ function segments(path: string): string[] {
   return path.split('/').filter((p) => p !== '')
 }
 
+// decoded percent-decodes a path, or gives null if it is malformed.
+function decoded(path: string): string | null {
+  try {
+    return decodeURIComponent(path)
+  } catch {
+    return null
+  }
+}
+
 // confinedImages resolves against baseDir and gives null when .. would go
-// above the first floor segments of it.
+// above the first floor segments of it. The path is walked decoded, with both
+// separators, because the browser and the file handler decode %2e, %2f and %5c
+// after this check.
 function confinedImages(key: string, baseDir: string, floor: number): ImageResolver {
   return (src) => {
-    if (/^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith('/') || src.startsWith('\\')) {
+    const path = decoded(src.split(/[?#]/)[0])
+    if (path === null || /^[a-z][a-z0-9+.-]*:/i.test(path) || /^[/\\]/.test(path)) {
       return null
     }
-    const path = src.split(/[?#]/)[0]
     const parts = segments(baseDir)
-    for (const seg of path.split('/')) {
+    for (const seg of path.split(/[/\\]/)) {
       if (seg === '..') {
         if (parts.length <= floor) {
           return null
@@ -44,6 +55,6 @@ function confinedImages(key: string, baseDir: string, floor: number): ImageResol
     if (parts.length === 0) {
       return null
     }
-    return filesPrefix + encodeURIComponent(key) + '/' + parts.join('/')
+    return filesPrefix + [key, ...parts].map(encodeURIComponent).join('/')
   }
 }
