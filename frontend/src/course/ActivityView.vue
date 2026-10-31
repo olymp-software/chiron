@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Activity as LoadActivity, CompleteActivity } from '../../wailsjs/go/main/App'
 import type { apperr, library } from '../../wailsjs/go/models'
@@ -18,9 +18,15 @@ const error = ref<apperr.Error>()
 const completing = ref(false)
 const completeError = ref<apperr.Error>()
 
+const resolveImage = computed(() => activityImages(props.courseKey, activity.value?.dir ?? ''))
+
 // loads numbers activity loads, so a slow answer for an activity the learner
 // has already left is dropped.
 let loads = 0
+
+onBeforeUnmount(() => {
+  loads++
+})
 
 watch(
   () => [props.courseKey, props.slug],
@@ -49,26 +55,34 @@ watch(
 )
 
 // complete is Next and Finish course: Go completes the activity and returns
-// the activity to open next, "" after the last one.
+// the activity to open next, "" after the last one. Finish course with an
+// earlier activity left opens the current activity. A learner who has left the
+// activity stays where they are.
 async function complete() {
   const a = activity.value
   if (!a || completing.value) {
     return
   }
+  const load = loads
   completing.value = true
   completeError.value = undefined
   try {
     const res = await CompleteActivity(props.courseKey, a.slug)
+    if (!res.error) {
+      emit('tree', res.tree)
+    }
+    if (load !== loads) {
+      return
+    }
     if (res.error) {
       completeError.value = res.error
       return
     }
-    emit('tree', res.tree)
-    if (res.next) {
-      router.push(`/courses/${props.courseKey}/activities/${res.next}`)
+    const next = res.next || (res.tree.completed ? '' : res.tree.current)
+    if (next) {
+      router.push(`/courses/${props.courseKey}/activities/${next}`)
     } else {
-      a.completed = true
-      a.courseCompleted = res.tree.completed
+      a.courseCompleted = true
     }
   } finally {
     completing.value = false
@@ -87,7 +101,7 @@ async function complete() {
         <MarkdownView
           v-if="b.kind === 'markdown'"
           :source="b.content"
-          :resolve-image="activityImages(courseKey, activity.dir)"
+          :resolve-image="resolveImage"
         />
       </template>
     </template>

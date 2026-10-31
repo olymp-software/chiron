@@ -52,8 +52,8 @@ func (l *Library) Enroll(key string) error {
 }
 
 // Enter decides whether the enrolled course with key may be entered and
-// returns its current activity, moved into course.yaml if the activity is
-// gone.
+// returns its current activity. Nothing is written, so progress in a newer
+// format does not keep the learner out.
 func (l *Library) Enter(key string) (string, error) {
 	if _, err := l.entry(key); err != nil {
 		return "", err
@@ -68,14 +68,11 @@ func (l *Library) Enter(key string) (string, error) {
 	if !l.checkSatisfied(e, c) {
 		return "", apperr.New(apperr.CheckRequired)
 	}
-	slugs := order(c)
-	p, err := l.progress.Update(key, func(p progress.Progress) progress.Progress {
-		return progress.Resolve(slugs, p)
-	})
+	p, err := l.progress.Load(key)
 	if err != nil {
 		return "", err
 	}
-	return p.Current, nil
+	return progress.Resolve(order(c), p).Current, nil
 }
 
 // Tree returns the course tree of the enrolled course with key.

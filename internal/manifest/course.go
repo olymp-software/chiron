@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -138,10 +139,15 @@ func validateSchema(compiled func() (*jsonschema.Schema, error), doc any) ([]app
 	return nil, err
 }
 
-// jsonCompatible converts maps with non-string keys, which YAML allows, to
-// maps with string keys.
+// jsonCompatible converts what YAML allows and JSON does not: maps with
+// non-string keys to maps with string keys, and .nan and .inf to strings.
 func jsonCompatible(v any) any {
 	switch v := v.(type) {
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return fmt.Sprint(v)
+		}
+		return v
 	case map[string]any:
 		for k, e := range v {
 			v[k] = jsonCompatible(e)

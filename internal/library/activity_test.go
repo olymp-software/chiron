@@ -141,8 +141,8 @@ func TestCompleteCurrentActivity(t *testing.T) {
 	if tree.Current != "loops" || !tree.Sections[0].Activities[0].Completed || tree.Sections[1].Activities[0].Locked {
 		t.Errorf("tree = %+v, want hello completed and loops current and available", tree)
 	}
-	if a, err := l.Activity(key, "loops"); err != nil || a.Completed {
-		t.Errorf("Activity(loops) = %+v, %v, want available and not completed", a, err)
+	if a, err := l.Activity(key, "loops"); err != nil {
+		t.Errorf("Activity(loops) = %+v, %v, want available", a, err)
 	}
 }
 
@@ -181,7 +181,7 @@ func TestFinishCourse(t *testing.T) {
 		t.Errorf("tree = %+v, want maps current and the course completed", tree)
 	}
 	a, err := l.Activity(key, "maps")
-	if err != nil || !a.Last || !a.Completed || !a.CourseCompleted {
+	if err != nil || !a.Last || !a.CourseCompleted {
 		t.Errorf("Activity(maps) = %+v, %v, want the last activity of a completed course", a, err)
 	}
 }
@@ -262,6 +262,77 @@ func TestSyncInsertsActivityIntoFinishedCourse(t *testing.T) {
 
 	if tree.Current != "maps" || !tree.Completed {
 		t.Errorf("tree = %+v, want the course completed again", tree)
+	}
+}
+
+func TestSyncInsertsSeveralActivities(t *testing.T) {
+	l, dataDir, src, key := enrolledCourse(t)
+	writeFile(t, statePath(dataDir, key), `{"version": 1, "current": "maps", "completed": ["hello", "loops"]}`)
+	complete(t, l, key, "maps", "")
+	writeFile(t, filepath.Join(src, manifest.CourseFile), "version: 1\ntitle: Go Basics\nsections:\n"+
+		"  - {slug: basics, title: Basics, activities: [{slug: hello, title: Hello}, {slug: x, title: X}]}\n"+
+		"  - {slug: more, title: More, activities: [{slug: loops, title: loops}, {slug: y, title: Y}, {slug: maps, title: maps}]}\n")
+	syncCourse(t, l, key)
+
+	tree, err := l.Tree(key)
+	if err != nil {
+		t.Fatalf("Tree: %v", err)
+	}
+	if tree.Current != "x" || tree.Completed {
+		t.Errorf("tree = %+v, want x current and the course not completed", tree)
+	}
+	if !tree.Sections[1].Activities[1].Locked {
+		t.Errorf("tree = %+v, want y locked", tree)
+	}
+
+	tree = complete(t, l, key, "x", "loops")
+
+	if tree.Current != "y" || tree.Sections[1].Activities[1].Locked {
+		t.Errorf("tree = %+v, want y current", tree)
+	}
+
+	tree = complete(t, l, key, "y", "maps")
+
+	if tree.Current != "maps" || !tree.Completed {
+		t.Errorf("tree = %+v, want the course completed again", tree)
+	}
+}
+
+func TestFinishCourseWithEarlierActivityLeft(t *testing.T) {
+	l, dataDir, _, key := enrolledCourse(t)
+	writeFile(t, statePath(dataDir, key), `{"version": 1, "current": "loops", "completed": ["hello", "maps"]}`)
+
+	tree := complete(t, l, key, "maps", "")
+
+	if tree.Current != "loops" || tree.Completed {
+		t.Errorf("tree = %+v, want loops current and the course not completed", tree)
+	}
+}
+
+func TestActivityNonFiniteNumber(t *testing.T) {
+	l, _, src, key := enrolledCourse(t)
+	writeFile(t, filepath.Join(src, "basics", "hello", manifest.ActivityFile), "version: .inf\n")
+	syncCourse(t, l, key)
+
+	a, err := l.Activity(key, "hello")
+
+	if err != nil || a.Error == nil || a.Error.Code != apperr.ManifestInvalid {
+		t.Errorf("Activity = %+v, %v, want a manifestInvalid activity error", a, err)
+	}
+}
+
+func TestEnterNewerProgressFormat(t *testing.T) {
+	l, dataDir, _, key := enrolledCourse(t)
+	stored := `{"version": 2, "current": "maps", "completed": ["hello"], "answers": {}}`
+	writeFile(t, statePath(dataDir, key), stored)
+
+	cur, err := l.Enter(key)
+
+	if err != nil || cur != "loops" {
+		t.Errorf("Enter = %q, %v, want loops", cur, err)
+	}
+	if got := readFile(t, statePath(dataDir, key)); got != stored {
+		t.Errorf("state file = %s, want unchanged %s", got, stored)
 	}
 }
 

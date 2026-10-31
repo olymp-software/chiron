@@ -90,6 +90,10 @@ func validRelPath(path string) bool {
 	if strings.Contains(path, `\`) || strings.HasPrefix(path, "/") || filepath.VolumeName(path) != "" {
 		return false
 	}
+	// The base folder itself is not a path in it.
+	if filepath.Clean(path) == "." {
+		return false
+	}
 	// A drive letter is not a volume name on Linux, but still absolute on Windows.
 	if len(path) >= 2 && path[1] == ':' {
 		return false

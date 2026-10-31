@@ -294,6 +294,21 @@ func TestParseActivityProblems(t *testing.T) {
 			want: []apperr.Problem{apperr.NewProblem(apperr.PathNotFound, "data.workspace[0].path", "path", "src")},
 		},
 		{
+			name: "workspace is the activity folder",
+			yaml: coding + "data:\n  workspace:\n    - path: .\n    - path: ./\n",
+			want: []apperr.Problem{
+				apperr.NewProblem(apperr.PathInvalid, "data.workspace[0].path", "path", "."),
+				apperr.NewProblem(apperr.PathInvalid, "data.workspace[1].path", "path", "./"),
+			},
+		},
+		{
+			name: "infinite version",
+			yaml: "version: .inf\ntype: theory\n" + theoryBlocks,
+			want: []apperr.Problem{
+				apperr.NewProblem(apperr.InvalidValue, "version", "value", "+Inf", "want", "1"),
+			},
+		},
+		{
 			name:  "script outside the activity folder",
 			yaml:  "version: 1\ntype: theory\n" + theoryBlocks + "controls:\n  - {label: Test, script: ../shared/test.sh}\n",
 			files: []string{"../shared/test.sh"},

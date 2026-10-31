@@ -34,7 +34,6 @@ function activity(fields: Partial<library.Activity> = {}): library.Activity {
     type: 'theory',
     theoryBlocks: [{ kind: 'markdown', content: '# Hi' }],
     last: false,
-    completed: false,
     courseCompleted: false,
     ...fields,
   })
@@ -112,7 +111,7 @@ describe('ActivityView', () => {
   })
 
   it('shows the completed course instead of Finish course', async () => {
-    loads(activity({ last: true, completed: true, courseCompleted: true }))
+    loads(activity({ last: true, courseCompleted: true }))
 
     const w = mountView()
     await flushPromises()
@@ -151,6 +150,57 @@ describe('ActivityView', () => {
 
     expect(w.get('footer [role=status]').text()).toBe('Course completed')
     expect(router.currentRoute.value.fullPath).toBe('/courses/go-1/activities/hello')
+  })
+
+  it('Finish course with an earlier activity left opens it', async () => {
+    loads(activity({ last: true }))
+    completeActivity.mockResolvedValue(
+      main.CompleteResult.createFrom({ next: '', tree: tree({ current: 'middle' }) }),
+    )
+    const w = mountView()
+    await flushPromises()
+
+    await w.get('footer button').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/courses/go-1/activities/middle')
+  })
+
+  it('stays where the learner went while Next was running', async () => {
+    loads(activity())
+    let answer: (res: main.CompleteResult) => void = () => {}
+    completeActivity.mockReturnValue(new Promise((resolve) => (answer = resolve)))
+    const updated = tree({ current: 'loops' })
+    const w = mountView()
+    await flushPromises()
+
+    await w.get('footer button').trigger('click')
+    await router.push('/courses/go-1/activities/maps')
+    await w.setProps({ slug: 'maps' })
+    await flushPromises()
+    answer(main.CompleteResult.createFrom({ next: 'loops', tree: updated }))
+    await flushPromises()
+
+    expect(w.emitted('tree')).toEqual([[updated]])
+    expect(router.currentRoute.value.fullPath).toBe('/courses/go-1/activities/maps')
+  })
+
+  it('does not redirect after it is unmounted', async () => {
+    await router.push('/courses/go-1/activities/maps')
+    let answer: (res: main.ActivityResult) => void = () => {}
+    loadActivity.mockReturnValue(new Promise((resolve) => (answer = resolve)))
+    const replace = vi.spyOn(router, 'replace')
+    const w = mountView('maps')
+
+    w.unmount()
+    answer(
+      main.ActivityResult.createFrom({
+        error: { code: 'activityUnavailable', params: { slug: 'maps' } },
+      }),
+    )
+    await flushPromises()
+
+    expect(replace).not.toHaveBeenCalled()
   })
 
   it('opens the current activity instead of an unavailable one', async () => {
