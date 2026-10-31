@@ -182,10 +182,41 @@ func TestTree(t *testing.T) {
 		t.Fatalf("Tree: %v", err)
 	}
 
+	// A fresh enrollment: only the first activity is available.
 	want := Tree{Title: "Go Basics", Current: "hello", Sections: []TreeSection{
 		{Slug: "basics", Title: "Basics", Activities: []TreeActivity{{Slug: "hello", Title: "Hello"}}},
 		{Slug: "more", Title: "More", Activities: []TreeActivity{
-			{Slug: "loops", Title: "loops"}, {Slug: "maps", Title: "maps"},
+			{Slug: "loops", Title: "loops", Locked: true}, {Slug: "maps", Title: "maps", Locked: true},
+		}},
+	}}
+	if !reflect.DeepEqual(tree, want) {
+		t.Errorf("tree = %+v, want %+v", tree, want)
+	}
+}
+
+func TestTreeMarks(t *testing.T) {
+	src := courseFolder(t, "Go Basics")
+	writeFile(t, filepath.Join(src, manifest.CourseFile), "version: 1\ntitle: Go Basics\nsections:\n"+
+		"  - {slug: basics, title: Basics, activities: [{slug: a1, title: A1}, {slug: a2, title: A2}]}\n"+
+		"  - {slug: more, title: More, activities: [{slug: a3, title: A3}, {slug: a4, title: A4}]}\n")
+	l, dataDir := newLib(t)
+	e := addLocal(t, l, src)
+	if err := l.Enroll(e.Key); err != nil {
+		t.Fatalf("Enroll: %v", err)
+	}
+	writeFile(t, statePath(dataDir, e.Key), `{"version": 1, "current": "a3", "completed": ["a1", "a2"]}`)
+
+	tree, err := l.Tree(e.Key)
+	if err != nil {
+		t.Fatalf("Tree: %v", err)
+	}
+
+	want := Tree{Title: "Go Basics", Current: "a3", Sections: []TreeSection{
+		{Slug: "basics", Title: "Basics", Activities: []TreeActivity{
+			{Slug: "a1", Title: "A1", Completed: true}, {Slug: "a2", Title: "A2", Completed: true},
+		}},
+		{Slug: "more", Title: "More", Activities: []TreeActivity{
+			{Slug: "a3", Title: "A3"}, {Slug: "a4", Title: "A4", Locked: true},
 		}},
 	}}
 	if !reflect.DeepEqual(tree, want) {

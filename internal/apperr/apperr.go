@@ -13,11 +13,15 @@ type Code string
 
 // Codes of errors shown to the learner. Every constant must be listed in All.
 const (
-	// Course manifest as a whole.
+	// Course manifest or activity.yaml as a whole; file is the course-relative
+	// path.
 	ManifestMissing          Code = "manifestMissing"
 	ManifestInvalid          Code = "manifestInvalid"
 	UnsupportedSchemaVersion Code = "unsupportedSchemaVersion"
 	YAMLSyntax               Code = "yamlSyntax"
+	ActivityFileMissing      Code = "activityFileMissing"
+	UnsupportedActivityType  Code = "unsupportedActivityType"
+	UnsupportedBlockKind     Code = "unsupportedBlockKind"
 
 	// Problems inside a manifest reported by the JSON Schema.
 	MissingField  Code = "missingField"
@@ -30,10 +34,12 @@ const (
 	SchemaProblem Code = "schemaProblem"
 
 	// Problems inside a manifest found by semantic checks.
-	DuplicateSectionSlug  Code = "duplicateSectionSlug"
-	DuplicateActivitySlug Code = "duplicateActivitySlug"
-	PathInvalid           Code = "pathInvalid"
-	PathNotFound          Code = "pathNotFound"
+	DuplicateSectionSlug     Code = "duplicateSectionSlug"
+	DuplicateActivitySlug    Code = "duplicateActivitySlug"
+	PathInvalid              Code = "pathInvalid"
+	PathNotFound             Code = "pathNotFound"
+	OneCorrectOptionRequired Code = "oneCorrectOptionRequired"
+	CorrectOptionRequired    Code = "correctOptionRequired"
 
 	// Course files.
 	OverviewFileAmbiguous Code = "overviewFileAmbiguous"
@@ -53,6 +59,7 @@ const (
 	NotEnrolled         Code = "notEnrolled"
 	ProgressReadFailed  Code = "progressReadFailed"
 	ProgressWriteFailed Code = "progressWriteFailed"
+	ActivityUnavailable Code = "activityUnavailable"
 
 	// Environment check.
 	CheckRequired   Code = "checkRequired"
@@ -69,6 +76,9 @@ var All = []Code{
 	ManifestInvalid,
 	UnsupportedSchemaVersion,
 	YAMLSyntax,
+	ActivityFileMissing,
+	UnsupportedActivityType,
+	UnsupportedBlockKind,
 	MissingField,
 	UnknownField,
 	WrongType,
@@ -81,6 +91,8 @@ var All = []Code{
 	DuplicateActivitySlug,
 	PathInvalid,
 	PathNotFound,
+	OneCorrectOptionRequired,
+	CorrectOptionRequired,
 	OverviewFileAmbiguous,
 	CourseReadFailed,
 	FolderNotFound,
@@ -94,6 +106,7 @@ var All = []Code{
 	NotEnrolled,
 	ProgressReadFailed,
 	ProgressWriteFailed,
+	ActivityUnavailable,
 	CheckRequired,
 	CheckRunning,
 	CheckReadFailed,

@@ -21,6 +21,8 @@ var schemaKeywordCodes = map[string]apperr.Code{
 	"minItems":             apperr.EmptyList,
 	"minLength":            apperr.EmptyString,
 	"const":                apperr.InvalidValue,
+	"enum":                 apperr.InvalidValue,
+	"false":                apperr.UnknownField, // a false subschema forbids a field
 }
 
 // collectProblems appends a problem for every leaf of a validation error tree.
@@ -53,6 +55,19 @@ func collectProblems(ve *jsonschema.ValidationError, out *[]apperr.Problem) {
 	case *kind.Const:
 		*out = append(*out, apperr.NewProblem(apperr.InvalidValue, path,
 			"value", fmt.Sprint(k.Got), "want", fmt.Sprint(k.Want)))
+	case *kind.Enum:
+		want := make([]string, len(k.Want))
+		for i, w := range k.Want {
+			want[i] = fmt.Sprint(w)
+		}
+		*out = append(*out, apperr.NewProblem(apperr.InvalidValue, path,
+			"value", fmt.Sprint(k.Got), "want", strings.Join(want, ", ")))
+	case *kind.FalseSchema:
+		// The schemas use false only under properties, so the location ends
+		// with the forbidden field.
+		loc := ve.InstanceLocation
+		*out = append(*out, apperr.NewProblem(apperr.UnknownField, yamlPath(loc[:len(loc)-1]),
+			"field", loc[len(loc)-1]))
 	default:
 		*out = append(*out, apperr.NewProblem(apperr.SchemaProblem, path,
 			"keyword", strings.Join(ve.ErrorKind.KeywordPath(), "/")))

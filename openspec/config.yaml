@@ -70,7 +70,7 @@ context: |
   - Full reset: deleting the learner folder entirely and recreating it from workspace files. Avoid: cleanup.
 
   Progression
-  - Current activity: the furthest activity the learner has reached; everything up to it is available, everything after is locked. Avoid: position, last opened activity.
+  - Current activity: the first activity in course order that is not completed, or the last one when all are completed; it and every completed activity are available, everything else is locked. Avoid: position, last opened activity.
   - Completed activity: an activity the learner left with "Next" (or "Finish course" on the last one), regardless of what they did in it. Avoid: finished, solved, passed.
-  - Completed course: a course whose last activity in the selected version is completed; stops being completed after switching to a version with activities after it. Avoid: finished course.
-  - New activity: an activity that, after a version switch, lies before the current activity but is not completed. Avoid: unread, updated.
+  - Completed course: a course whose every activity in the selected version is completed; stops being completed when a version switch or Sync adds an activity. Avoid: finished course.
+  - New activity: an activity that a version switch or Sync adds to the course; it is not completed, so one added before the current activity becomes current. Avoid: unread, updated.

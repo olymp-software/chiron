@@ -10,8 +10,25 @@ defineProps<{ courseKey: string; tree: library.Tree }>()
       <h2>{{ s.title }}</h2>
       <ul>
         <li v-for="a in s.activities" :key="a.slug">
+          <span v-if="a.locked" class="item locked" aria-disabled="true">{{ a.title }}</span>
           <!-- The open activity gets router-link-exact-active and aria-current. -->
-          <RouterLink :to="`/courses/${courseKey}/activities/${a.slug}`">{{ a.title }}</RouterLink>
+          <RouterLink v-else class="item" :to="`/courses/${courseKey}/activities/${a.slug}`">
+            {{ a.title }}
+            <span
+              v-if="a.completed"
+              class="mark"
+              role="img"
+              :aria-label="$t('course.markCompleted')"
+              >✓</span
+            >
+            <span
+              v-if="a.slug === tree.current"
+              class="mark"
+              role="img"
+              :aria-label="$t('course.markCurrent')"
+              >●</span
+            >
+          </RouterLink>
         </li>
       </ul>
     </section>
@@ -37,12 +54,26 @@ ul {
   list-style: none;
 }
 
-a {
-  display: block;
+.item {
+  display: flex;
+  gap: 0.5rem;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   color: inherit;
   text-decoration: none;
+}
+
+.locked {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mark {
+  margin-left: auto;
+}
+
+.mark + .mark {
+  margin-left: 0;
 }
 
 a.router-link-exact-active {

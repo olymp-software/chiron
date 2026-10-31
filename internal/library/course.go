@@ -10,6 +10,7 @@ import (
 
 	"github.com/olymp-software/chiron/internal/apperr"
 	"github.com/olymp-software/chiron/internal/manifest"
+	"github.com/olymp-software/chiron/internal/progress"
 	"github.com/olymp-software/chiron/internal/source"
 )
 
@@ -110,7 +111,19 @@ func (l *Library) Sync(key string) (Entry, error) {
 	l.log.Info("course synced", "source", e.Source, "key", e.Key)
 
 	c, err := manifest.ParseCourse(l.CopyPath(e.Key))
-	if err != nil || c.Title == e.Title {
+	if err != nil {
+		return e, nil
+	}
+	if l.enrolled(e.Key) {
+		// The library shows whether the course is completed from the progress.
+		slugs := order(c)
+		if _, err := l.progress.Update(e.Key, func(p progress.Progress) progress.Progress {
+			return progress.Resolve(slugs, p)
+		}); err != nil {
+			l.log.Error("reconcile progress after sync", "key", e.Key, "err", err)
+		}
+	}
+	if c.Title == e.Title {
 		return e, nil
 	}
 	err = l.update(func(f *libraryFile) error {

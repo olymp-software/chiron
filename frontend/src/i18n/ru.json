@@ -14,7 +14,8 @@
     "adding": "Добавление…",
     "pickFolder": "Выберите папку курса",
     "empty": "Курсов пока нет. Добавьте курс из локальной папки.",
-    "enrolled": "Вы записаны"
+    "enrolled": "Вы записаны",
+    "completed": "Пройден"
   },
   "scriptWarning": {
     "title": "Курс будет запускать скрипты",
@@ -37,6 +38,8 @@
     "syncing": "Синхронизация…",
     "enroll": "Записаться",
     "continue": "Продолжить",
+    "review": "Повторить",
+    "completed": "Курс пройден",
     "checkEnvironment": "Проверить окружение",
     "checkStatus": {
       "notChecked": "Окружение не проверено",
@@ -56,13 +59,21 @@
     "library": "Библиотека",
     "switch": "Курс",
     "overview": "Обзор",
-    "loading": "Загрузка…"
+    "loading": "Загрузка…",
+    "next": "Далее",
+    "finish": "Завершить курс",
+    "completed": "Курс пройден",
+    "markCompleted": "Пройдено",
+    "markCurrent": "Текущая активность"
   },
   "errors": {
     "manifestMissing": "В корне курса нет course.yaml.",
-    "manifestInvalid": "В course.yaml есть ошибки:",
-    "unsupportedSchemaVersion": "course.yaml использует версию схемы {version}, для неё нужна более новая версия приложения.",
-    "yamlSyntax": "course.yaml не является корректным YAML около строки {line}.",
+    "manifestInvalid": "В {file} есть ошибки:",
+    "unsupportedSchemaVersion": "{file} использует версию схемы {version}, для неё нужна более новая версия приложения.",
+    "yamlSyntax": "{file} не является корректным YAML около строки {line}.",
+    "activityFileMissing": "{file} нет в курсе.",
+    "unsupportedActivityType": "{file} использует тип активности «{type}», для него нужна более новая версия приложения.",
+    "unsupportedBlockKind": "{file} использует вид блока теории «{kind}», для него нужна более новая версия приложения.",
     "missingField": "нет обязательного поля «{field}»",
     "unknownField": "неизвестное поле «{field}»",
     "wrongType": "ожидается {want}, указано {got}",
@@ -74,7 +85,9 @@
     "duplicateSectionSlug": "slug раздела «{slug}» используется больше одного раза",
     "duplicateActivitySlug": "slug активности «{slug}» используется в курсе больше одного раза",
     "pathInvalid": "путь «{path}» должен быть относительным, с разделителем / и без ..",
-    "pathNotFound": "файла «{path}» нет в курсе",
+    "pathNotFound": "«{path}» нет в курсе",
+    "oneCorrectOptionRequired": "при «multiple: false» правильным должен быть ровно один вариант",
+    "correctOptionRequired": "хотя бы один вариант должен быть правильным",
     "overviewFileAmbiguous": "В курсе несколько файлов обзора: {files}. Оставьте один.",
     "courseReadFailed": "Не удалось прочитать «{path}» в курсе.",
     "folderNotFound": "Папки «{path}» не существует.",
@@ -88,6 +101,7 @@
     "notEnrolled": "Вы не записаны на этот курс.",
     "progressReadFailed": "Не удалось прочитать прогресс курса.",
     "progressWriteFailed": "Не удалось сохранить прогресс курса.",
+    "activityUnavailable": "Активность «{slug}» пока недоступна.",
     "checkRequired": "Сначала запустите проверку окружения: она должна пройти успешно, прежде чем вы сможете проходить курс.",
     "checkRunning": "Проверка окружения этого курса уже запущена.",
     "checkReadFailed": "Не удалось прочитать проверку окружения «{path}» в курсе.",

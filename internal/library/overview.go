@@ -11,8 +11,10 @@ import (
 // overview: its stored title and the course error instead of the text.
 type Overview struct {
 	Entry
-	Enrolled bool                  `json:"enrolled"`
-	Text     manifest.OverviewText `json:"text"`
+	Enrolled bool `json:"enrolled"`
+	// Completed is the completion stored in the progress, as in the library.
+	Completed bool                  `json:"completed"`
+	Text      manifest.OverviewText `json:"text"`
 	// Check is the environment check status: "" (no check or invalid
 	// course.yaml), CheckNotChecked, CheckPassed or CheckChanged.
 	Check string        `json:"check"`
@@ -26,7 +28,8 @@ func (l *Library) Overview(key string) (Overview, error) {
 	if err != nil {
 		return Overview{}, err
 	}
-	o := Overview{Entry: e, Enrolled: l.enrolled(e.Key)}
+	o := Overview{Entry: e}
+	o.Enrolled, o.Completed = l.enrollment(e.Key)
 	root := l.CopyPath(e.Key)
 	c, err := manifest.ParseCourse(root)
 	if err == nil {

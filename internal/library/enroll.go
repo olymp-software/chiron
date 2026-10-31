@@ -1,17 +1,20 @@
 package library
 
 import (
+	"slices"
+
 	"github.com/olymp-software/chiron/internal/apperr"
 	"github.com/olymp-software/chiron/internal/manifest"
 	"github.com/olymp-software/chiron/internal/progress"
 )
 
 // Tree is what the course tree shows: the sections and activities of
-// course.yaml and the current activity.
+// course.yaml, the current activity and whether the course is completed.
 type Tree struct {
-	Title    string        `json:"title"`
-	Current  string        `json:"current"`
-	Sections []TreeSection `json:"sections"`
+	Title     string        `json:"title"`
+	Current   string        `json:"current"`
+	Completed bool          `json:"completed"`
+	Sections  []TreeSection `json:"sections"`
 }
 
 // TreeSection is a section of the course tree.
@@ -21,10 +24,13 @@ type TreeSection struct {
 	Activities []TreeActivity `json:"activities"`
 }
 
-// TreeActivity is an activity of the course tree.
+// TreeActivity is an activity of the course tree. A locked activity is
+// neither completed nor current and cannot be opened.
 type TreeActivity struct {
-	Slug  string `json:"slug"`
-	Title string `json:"title"`
+	Slug      string `json:"slug"`
+	Title     string `json:"title"`
+	Completed bool   `json:"completed"`
+	Locked    bool   `json:"locked"`
 }
 
 // Enroll enrolls the course with key with its first activity as the current
@@ -82,15 +88,37 @@ func (l *Library) Tree(key string) (Tree, error) {
 	if err != nil {
 		return Tree{}, err
 	}
-	t := Tree{Title: c.Title, Current: p.Current, Sections: make([]TreeSection, len(c.Sections))}
-	for i, s := range c.Sections {
+	return tree(c, p), nil
+}
+
+// tree builds the course tree of c with progress p.
+func tree(c *manifest.Course, p progress.Progress) Tree {
+	p = progress.Resolve(order(c), p)
+	t := Tree{
+		Title:     c.Title,
+		Current:   p.Current,
+		Completed: p.CourseCompleted,
+		Sections:  make([]TreeSection, len(c.Sections)),
+	}
+	for si, s := range c.Sections {
 		ts := TreeSection{Slug: s.Slug, Title: s.Title, Activities: make([]TreeActivity, len(s.Activities))}
 		for j, a := range s.Activities {
-			ts.Activities[j] = TreeActivity{Slug: a.Slug, Title: a.Title}
+			ts.Activities[j] = TreeActivity{
+				Slug:      a.Slug,
+				Title:     a.Title,
+				Completed: slices.Contains(p.Completed, a.Slug),
+				Locked:    !available(p, a.Slug),
+			}
 		}
-		t.Sections[i] = ts
+		t.Sections[si] = ts
 	}
-	return t, nil
+	return t
+}
+
+// available reports whether the activity slug may be opened with resolved
+// progress p: it is completed or current.
+func available(p progress.Progress, slug string) bool {
+	return slug == p.Current || slices.Contains(p.Completed, slug)
 }
 
 // course returns the library entry of the course with key and its

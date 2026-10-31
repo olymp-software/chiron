@@ -49,7 +49,7 @@ function switchCourse(e: Event) {
     <div v-if="tree" class="body">
       <CourseTree :course-key="courseKey" :tree="tree" />
       <RouterView v-slot="{ Component }">
-        <component :is="Component" :tree="tree" />
+        <component :is="Component" :tree="tree" @tree="(t: library.Tree) => (tree = t)" />
       </RouterView>
     </div>
   </section>

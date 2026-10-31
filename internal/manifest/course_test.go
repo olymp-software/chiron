@@ -94,8 +94,8 @@ func TestParseCourseYAMLSyntax(t *testing.T) {
 	root := writeCourse(t, "version: 1\ntitle: [unclosed\n")
 
 	got := appErr(t, mustFail(t, root))
-	if got.Code != apperr.YAMLSyntax || got.Params["line"] == "" {
-		t.Errorf("error = %+v, want %s with a line", got, apperr.YAMLSyntax)
+	if got.Code != apperr.YAMLSyntax || got.Params["line"] == "" || got.Params["file"] != CourseFile {
+		t.Errorf("error = %+v, want %s with a line in %s", got, apperr.YAMLSyntax, CourseFile)
 	}
 }
 
@@ -104,7 +104,7 @@ func TestParseCourseNewerSchema(t *testing.T) {
 	root := writeCourse(t, "version: 2\ntitle: X\nauthor: Someone\n")
 
 	got := appErr(t, mustFail(t, root))
-	want := apperr.New(apperr.UnsupportedSchemaVersion, "version", "2")
+	want := apperr.New(apperr.UnsupportedSchemaVersion, "file", CourseFile, "version", "2")
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("error = %+v, want %+v", got, want)
 	}
@@ -216,8 +216,8 @@ func TestParseCourseProblems(t *testing.T) {
 			root := writeCourse(t, tt.yaml, tt.files...)
 
 			got := appErr(t, mustFail(t, root))
-			if got.Code != apperr.ManifestInvalid {
-				t.Fatalf("code = %s, want %s (%v)", got.Code, apperr.ManifestInvalid, got)
+			if got.Code != apperr.ManifestInvalid || got.Params["file"] != CourseFile {
+				t.Fatalf("error = %v, want %s in %s", got, apperr.ManifestInvalid, CourseFile)
 			}
 			if !reflect.DeepEqual(got.Problems, tt.want) {
 				t.Errorf("problems = %+v\nwant %+v", got.Problems, tt.want)
@@ -240,19 +240,34 @@ func TestYAMLPath(t *testing.T) {
 var structuralKeywords = map[string]bool{
 	"$schema": true, "$id": true, "$defs": true, "$ref": true,
 	"title": true, "description": true, "properties": true, "items": true,
+	"allOf": true, "if": true, "then": true,
 }
 
-// schemaKeywords collects the keywords used in a schema object and its
-// subschemas.
-func schemaKeywords(schema map[string]any, out map[string]bool) {
-	for k, v := range schema {
+// schemaKeywords collects the keywords used in a schema and its subschemas.
+// A false subschema counts as the keyword "false".
+func schemaKeywords(schema any, out map[string]bool) {
+	obj, ok := schema.(map[string]any)
+	if !ok {
+		if b, ok := schema.(bool); ok && !b {
+			out["false"] = true
+		}
+		return
+	}
+	for k, v := range obj {
 		out[k] = true
 		switch k {
 		case "properties", "$defs":
 			for _, sub := range v.(map[string]any) {
-				schemaKeywords(sub.(map[string]any), out)
+				schemaKeywords(sub, out)
 			}
-		case "items", "additionalProperties":
+		case "allOf":
+			for _, sub := range v.([]any) {
+				schemaKeywords(sub, out)
+			}
+		case "items", "if", "then":
+			schemaKeywords(v, out)
+		case "additionalProperties":
+			// additionalProperties: false is reported by its own keyword.
 			if sub, ok := v.(map[string]any); ok {
 				schemaKeywords(sub, out)
 			}
@@ -261,19 +276,21 @@ func schemaKeywords(schema map[string]any, out map[string]bool) {
 }
 
 func TestEverySchemaKeywordHasCode(t *testing.T) {
-	var schema map[string]any
-	if err := json.Unmarshal(schemas.CourseV1, &schema); err != nil {
-		t.Fatal(err)
-	}
-	used := map[string]bool{}
-	schemaKeywords(schema, used)
-
-	for _, k := range slices.Sorted(maps.Keys(used)) {
-		if structuralKeywords[k] {
-			continue
+	for name, data := range map[string][]byte{"course": schemas.CourseV1, "activity": schemas.ActivityV1} {
+		var schema any
+		if err := json.Unmarshal(data, &schema); err != nil {
+			t.Fatal(err)
 		}
-		if _, ok := schemaKeywordCodes[k]; !ok {
-			t.Errorf("course schema uses keyword %q without a code in schemaKeywordCodes", k)
+		used := map[string]bool{}
+		schemaKeywords(schema, used)
+
+		for _, k := range slices.Sorted(maps.Keys(used)) {
+			if structuralKeywords[k] {
+				continue
+			}
+			if _, ok := schemaKeywordCodes[k]; !ok {
+				t.Errorf("%s schema uses keyword %q without a code in schemaKeywordCodes", name, k)
+			}
 		}
 	}
 }

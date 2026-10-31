@@ -65,49 +65,54 @@ func ParseCourse(root string) (*Course, error) {
 
 	var doc any
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, yamlSyntaxError(err)
+		return nil, yamlSyntaxError(CourseFile, err)
 	}
 	if m, ok := doc.(map[string]any); ok {
 		if v, ok := m["version"].(int); ok && v > courseSchemaVersion {
-			return nil, apperr.New(apperr.UnsupportedSchemaVersion, "version", strconv.Itoa(v))
+			return nil, unsupportedVersion(CourseFile, v)
 		}
 	}
 
-	if problems, err := validateSchema(doc); err != nil {
+	if problems, err := validateSchema(courseSchema, doc); err != nil {
 		return nil, err
 	} else if len(problems) > 0 {
-		return nil, invalid(problems)
+		return nil, invalid(CourseFile, problems)
 	}
 
 	var c Course
 	if err := yaml.Unmarshal(data, &c); err != nil {
-		return nil, yamlSyntaxError(err)
+		return nil, yamlSyntaxError(CourseFile, err)
 	}
 	if problems := c.check(root); len(problems) > 0 {
-		return nil, invalid(problems)
+		return nil, invalid(CourseFile, problems)
 	}
 	return &c, nil
 }
 
-func invalid(problems []apperr.Problem) *apperr.Error {
-	e := apperr.New(apperr.ManifestInvalid)
+// invalid reports the problems of file, a course-relative path.
+func invalid(file string, problems []apperr.Problem) *apperr.Error {
+	e := apperr.New(apperr.ManifestInvalid, "file", file)
 	e.Problems = problems
 	return e
 }
 
-var yamlLine = regexp.MustCompile(`line (\d+)`)
-
-func yamlSyntaxError(err error) *apperr.Error {
-	if m := yamlLine.FindStringSubmatch(err.Error()); m != nil {
-		return apperr.New(apperr.YAMLSyntax, "line", m[1])
-	}
-	return apperr.New(apperr.YAMLSyntax)
+func unsupportedVersion(file string, v int) *apperr.Error {
+	return apperr.New(apperr.UnsupportedSchemaVersion, "file", file, "version", strconv.Itoa(v))
 }
 
-// validateSchema validates the decoded YAML against the course schema and
-// returns its problems sorted by path.
-func validateSchema(doc any) ([]apperr.Problem, error) {
-	schema, err := courseSchema()
+var yamlLine = regexp.MustCompile(`line (\d+)`)
+
+func yamlSyntaxError(file string, err error) *apperr.Error {
+	if m := yamlLine.FindStringSubmatch(err.Error()); m != nil {
+		return apperr.New(apperr.YAMLSyntax, "file", file, "line", m[1])
+	}
+	return apperr.New(apperr.YAMLSyntax, "file", file)
+}
+
+// validateSchema validates the decoded YAML against a schema and returns its
+// problems sorted by path.
+func validateSchema(compiled func() (*jsonschema.Schema, error), doc any) ([]apperr.Problem, error) {
+	schema, err := compiled()
 	if err != nil {
 		return nil, err
 	}

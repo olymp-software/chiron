@@ -7,11 +7,15 @@ Defines the library of added courses, the course overview from which the learner
 ## Requirements
 
 ### Requirement: Library lists added courses
-The library SHALL list every added course, whether or not the learner is enrolled in it. Each entry SHALL show the stored course title, whether the learner is enrolled, and, for a repository course, whether the selected version is not the latest. Clicking an entry SHALL open its course overview.
+The library SHALL list every added course, whether or not the learner is enrolled in it. Each entry SHALL show the stored course title, whether the learner is enrolled or has completed the course, and, for a repository course, whether the selected version is not the latest. Clicking an entry SHALL open its course overview.
 
 #### Scenario: Course added but not enrolled
 - **WHEN** the learner has added a course and has not enrolled in it
 - **THEN** the course is listed in the library without the enrolled mark
+
+#### Scenario: Completed course
+- **WHEN** the learner has pressed "Finish course" in a course and opens the library
+- **THEN** the course is marked as completed instead of enrolled
 
 #### Scenario: Not on the latest version
 - **WHEN** a repository course has a tag newer than its selected version
@@ -29,7 +33,7 @@ Adding a course SHALL put it in the library without enrolling the learner in it.
 - **THEN** the course overview of the new course opens with an Enroll button and no progress exists for the course
 
 ### Requirement: Course overview contents
-The course overview SHALL show the course title, the course source, the storage key, the overview text, the selected version with the version selector for a repository course or Sync for a local-folder course, the environment check controls if `check` is declared, and an Enroll or Continue button. If `course.yaml` is invalid, the overview SHALL show the course error and keep the version selector or Sync available.
+The course overview SHALL show the course title, the course source, the storage key, the overview text, the selected version with the version selector for a repository course or Sync for a local-folder course, the environment check controls if `check` is declared, whether the course is completed, and an Enroll, Continue or Review button. If `course.yaml` is invalid, the overview SHALL show the course error and keep the version selector or Sync available.
 
 #### Scenario: Course with a check
 - **WHEN** the learner opens the overview of a course whose `course.yaml` declares `check`
@@ -50,6 +54,14 @@ The course overview SHALL show the course title, the course source, the storage 
 #### Scenario: Matching files on disk
 - **WHEN** the learner opens the overview of a course
 - **THEN** the overview shows the course source and the storage key used to name its files on disk
+
+#### Scenario: Completed course
+- **WHEN** the learner opens the overview of a completed course
+- **THEN** the overview shows that the course is completed
+
+#### Scenario: Sync adds activities to a completed course
+- **WHEN** the learner presses Sync in the overview of a completed local-folder course whose new `course.yaml` has a new activity anywhere in the course
+- **THEN** the overview no longer shows the course as completed and shows Continue instead of Review
 
 ### Requirement: Overview text source
 The overview text SHALL be the content of the overview file `OVERVIEW.md` in the course root, matched case-insensitively. Without that file it SHALL be the course `description`. Without both, no overview text SHALL be shown. More than one matching file SHALL be a course error.
@@ -101,11 +113,15 @@ A course overview of a course the learner is not enrolled in SHALL show an Enrol
 - **THEN** Enroll becomes available
 
 ### Requirement: Continue
-A course overview of a course the learner is enrolled in SHALL show a Continue button instead of Enroll. Continue SHALL be available only if the course has no `check` or the environment check is satisfied, and SHALL open the course screen on the current activity.
+A course overview of a course the learner is enrolled in SHALL show a Continue button instead of Enroll; for a completed course the button SHALL be Review instead of Continue. Continue and Review SHALL be available only if the course has no `check` or the environment check is satisfied, and SHALL open the course screen on the current activity.
 
 #### Scenario: Continue an enrolled course
 - **WHEN** the learner is enrolled, the check is satisfied and the learner presses Continue
 - **THEN** the course screen opens on the current activity
+
+#### Scenario: Review a completed course
+- **WHEN** the course is completed, the check is satisfied and the learner presses Review
+- **THEN** the course screen opens on the last activity, which shows that the course is completed
 
 #### Scenario: Check file changed
 - **WHEN** the learner is enrolled and the selected version has a `check` file different from the one that last succeeded

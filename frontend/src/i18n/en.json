@@ -14,7 +14,8 @@
     "adding": "Adding…",
     "pickFolder": "Choose the course folder",
     "empty": "No courses yet. Add a course from a local folder.",
-    "enrolled": "Enrolled"
+    "enrolled": "Enrolled",
+    "completed": "Completed"
   },
   "scriptWarning": {
     "title": "This course will run scripts",
@@ -37,6 +38,8 @@
     "syncing": "Syncing…",
     "enroll": "Enroll",
     "continue": "Continue",
+    "review": "Review",
+    "completed": "Course completed",
     "checkEnvironment": "Check environment",
     "checkStatus": {
       "notChecked": "Environment not checked",
@@ -56,13 +59,21 @@
     "library": "Library",
     "switch": "Course",
     "overview": "Overview",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "next": "Next",
+    "finish": "Finish course",
+    "completed": "Course completed",
+    "markCompleted": "Completed",
+    "markCurrent": "Current activity"
   },
   "errors": {
     "manifestMissing": "The course has no course.yaml in its root.",
-    "manifestInvalid": "course.yaml has errors:",
-    "unsupportedSchemaVersion": "course.yaml uses schema version {version}, which requires a newer version of the app.",
-    "yamlSyntax": "course.yaml is not valid YAML near line {line}.",
+    "manifestInvalid": "{file} has errors:",
+    "unsupportedSchemaVersion": "{file} uses schema version {version}, which requires a newer version of the app.",
+    "yamlSyntax": "{file} is not valid YAML near line {line}.",
+    "activityFileMissing": "{file} does not exist in the course.",
+    "unsupportedActivityType": "{file} uses activity type “{type}”, which requires a newer version of the app.",
+    "unsupportedBlockKind": "{file} uses theory block kind “{kind}”, which requires a newer version of the app.",
     "missingField": "required field “{field}” is missing",
     "unknownField": "unknown field “{field}”",
     "wrongType": "expected {want}, got {got}",
@@ -74,7 +85,9 @@
     "duplicateSectionSlug": "section slug “{slug}” is used more than once",
     "duplicateActivitySlug": "activity slug “{slug}” is used more than once in the course",
     "pathInvalid": "path “{path}” must be relative, use / as separator and not contain ..",
-    "pathNotFound": "file “{path}” does not exist in the course",
+    "pathNotFound": "“{path}” does not exist in the course",
+    "oneCorrectOptionRequired": "exactly one option must be correct when “multiple” is false",
+    "correctOptionRequired": "at least one option must be correct",
     "overviewFileAmbiguous": "The course has several overview files: {files}. Keep only one.",
     "courseReadFailed": "Could not read “{path}” in the course.",
     "folderNotFound": "Folder “{path}” does not exist.",
@@ -88,6 +101,7 @@
     "notEnrolled": "You are not enrolled in this course.",
     "progressReadFailed": "Could not read the course progress.",
     "progressWriteFailed": "Could not save the course progress.",
+    "activityUnavailable": "Activity “{slug}” is not available yet.",
     "checkRequired": "Run the environment check first: it must succeed before you can take the course.",
     "checkRunning": "The environment check of this course is already running.",
     "checkReadFailed": "Could not read the environment check “{path}” in the course.",

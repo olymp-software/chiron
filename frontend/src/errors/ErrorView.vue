@@ -9,6 +9,13 @@ const { t } = useI18n()
 
 const releasesURL = 'https://github.com/olymp-software/chiron/releases'
 
+// newerAppCodes are the errors that a newer version of the app resolves.
+const newerAppCodes = [
+  'unsupportedSchemaVersion',
+  'unsupportedActivityType',
+  'unsupportedBlockKind',
+]
+
 // message translates a coded error or problem; codes are defined in Go.
 function message(item: { code: string; params?: Record<string, string> }): string {
   return t(`errors.${item.code}`, item.params ?? {})
@@ -24,7 +31,7 @@ function message(item: { code: string; params?: Record<string, string> }): strin
         ><span v-if="p.path">: </span>{{ message(p) }}
       </li>
     </ul>
-    <button v-if="error.code === 'unsupportedSchemaVersion'" @click="BrowserOpenURL(releasesURL)">
+    <button v-if="newerAppCodes.includes(error.code)" @click="BrowserOpenURL(releasesURL)">
       {{ t('app.releases') }}
     </button>
   </div>

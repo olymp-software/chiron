@@ -1,0 +1,169 @@
+// @vitest-environment jsdom
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createI18n } from 'vue-i18n'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+import { Activity, CompleteActivity } from '../../wailsjs/go/main/App'
+import { apperr, library, main } from '../../wailsjs/go/models'
+import en from '../i18n/en.json'
+import ActivityView from './ActivityView.vue'
+
+vi.mock('../../wailsjs/go/main/App', () => ({
+  Activity: vi.fn(),
+  CompleteActivity: vi.fn(),
+}))
+
+const loadActivity = vi.mocked(Activity)
+const completeActivity = vi.mocked(CompleteActivity)
+
+function tree(fields: Partial<library.Tree> = {}): library.Tree {
+  return library.Tree.createFrom({
+    title: 'Go',
+    current: 'hello',
+    completed: false,
+    sections: [],
+    ...fields,
+  })
+}
+
+function activity(fields: Partial<library.Activity> = {}): library.Activity {
+  return library.Activity.createFrom({
+    slug: 'hello',
+    title: 'Hello',
+    dir: 'basics/hello',
+    type: 'theory',
+    theoryBlocks: [{ kind: 'markdown', content: '# Hi' }],
+    last: false,
+    completed: false,
+    courseCompleted: false,
+    ...fields,
+  })
+}
+
+function loads(a: library.Activity) {
+  loadActivity.mockResolvedValue(main.ActivityResult.createFrom({ activity: a }))
+}
+
+let router: Router
+
+beforeEach(async () => {
+  vi.resetAllMocks()
+  router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/courses/:key/activities/:slug', component: { render: () => null } }],
+  })
+  await router.push('/courses/go-1/activities/hello')
+})
+
+function mountView(slug = 'hello', t = tree()) {
+  const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } })
+  return mount(ActivityView, {
+    props: { courseKey: 'go-1', slug, tree: t },
+    global: { plugins: [i18n, router] },
+  })
+}
+
+describe('ActivityView', () => {
+  it('shows the theory blocks in order', async () => {
+    loads(
+      activity({
+        theoryBlocks: [
+          { kind: 'markdown', content: '# One' },
+          { kind: 'markdown', content: '# Two' },
+        ],
+      }),
+    )
+
+    const w = mountView()
+
+    await vi.waitFor(() =>
+      expect(w.findAll('.markdown h1').map((h) => h.text())).toEqual(['One', 'Two']),
+    )
+    expect(loadActivity).toHaveBeenCalledExactlyOnceWith('go-1', 'hello')
+  })
+
+  it('shows the activity error and Next', async () => {
+    loads(
+      activity({
+        theoryBlocks: [],
+        error: apperr.Error.createFrom({
+          code: 'activityFileMissing',
+          params: { file: 'basics/hello/activity.yaml' },
+        }),
+      }),
+    )
+
+    const w = mountView()
+    await flushPromises()
+
+    expect(w.get('[role=alert]').text()).toContain(
+      'basics/hello/activity.yaml does not exist in the course.',
+    )
+    expect(w.get('footer button').text()).toBe('Next')
+  })
+
+  it('shows Finish course on the last activity', async () => {
+    loads(activity({ last: true }))
+
+    const w = mountView()
+    await flushPromises()
+
+    expect(w.get('footer button').text()).toBe('Finish course')
+  })
+
+  it('shows the completed course instead of Finish course', async () => {
+    loads(activity({ last: true, completed: true, courseCompleted: true }))
+
+    const w = mountView()
+    await flushPromises()
+
+    expect(w.get('footer [role=status]').text()).toBe('Course completed')
+    expect(w.find('footer button').exists()).toBe(false)
+  })
+
+  it('Next opens the next activity and updates the tree', async () => {
+    loads(activity())
+    const updated = tree({ current: 'loops' })
+    completeActivity.mockResolvedValue(
+      main.CompleteResult.createFrom({ next: 'loops', tree: updated }),
+    )
+    const w = mountView()
+    await flushPromises()
+
+    await w.get('footer button').trigger('click')
+    await flushPromises()
+
+    expect(completeActivity).toHaveBeenCalledExactlyOnceWith('go-1', 'hello')
+    expect(w.emitted('tree')).toEqual([[updated]])
+    expect(router.currentRoute.value.fullPath).toBe('/courses/go-1/activities/loops')
+  })
+
+  it('Finish course shows the completed course', async () => {
+    loads(activity({ last: true }))
+    completeActivity.mockResolvedValue(
+      main.CompleteResult.createFrom({ next: '', tree: tree({ completed: true }) }),
+    )
+    const w = mountView()
+    await flushPromises()
+
+    await w.get('footer button').trigger('click')
+    await flushPromises()
+
+    expect(w.get('footer [role=status]').text()).toBe('Course completed')
+    expect(router.currentRoute.value.fullPath).toBe('/courses/go-1/activities/hello')
+  })
+
+  it('opens the current activity instead of an unavailable one', async () => {
+    await router.push('/courses/go-1/activities/maps')
+    loadActivity.mockResolvedValue(
+      main.ActivityResult.createFrom({
+        error: { code: 'activityUnavailable', params: { slug: 'maps' } },
+      }),
+    )
+
+    mountView('maps')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/courses/go-1/activities/hello')
+  })
+})

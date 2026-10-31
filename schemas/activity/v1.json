@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/olymp-software/chiron/schemas/activity/v1.json",
+  "title": "Chiron activity (activity.yaml), schema version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "type", "theory_blocks"],
+  "properties": {
+    "version": {
+      "description": "Schema version of this file.",
+      "const": 1
+    },
+    "type": {
+      "description": "Activity type: what the learner does in the activity.",
+      "enum": ["theory", "quiz", "coding"]
+    },
+    "theory_blocks": {
+      "description": "Theory blocks shown in order at the top of the activity.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/theoryBlock" }
+    },
+    "controls": {
+      "description": "Buttons that run scripts from the activity folder.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/control" }
+    },
+    "data": {
+      "description": "Type-specific fields: absent for theory, required for quiz and coding."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "required": ["type"], "properties": { "type": { "const": "theory" } } },
+      "then": { "properties": { "data": false } }
+    },
+    {
+      "if": { "required": ["type"], "properties": { "type": { "const": "quiz" } } },
+      "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/quizData" } } }
+    },
+    {
+      "if": { "required": ["type"], "properties": { "type": { "const": "coding" } } },
+      "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/codingData" } } }
+    }
+  ],
+  "$defs": {
+    "theoryBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "data"],
+      "properties": {
+        "kind": {
+          "description": "Block kind.",
+          "const": "markdown"
+        },
+        "data": { "$ref": "#/$defs/markdownData" }
+      }
+    },
+    "markdownData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content"],
+      "properties": {
+        "content": {
+          "description": "Markdown text.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "script"],
+      "properties": {
+        "label": {
+          "description": "Button text.",
+          "type": "string",
+          "minLength": 1
+        },
+        "script": {
+          "description": "Path from the activity folder to the script the control runs.",
+          "type": "string",
+          "minLength": 1
+        },
+        "concurrency": {
+          "description": "Exclusion group: controls with the same group never run at once.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "quizData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["questions"],
+      "properties": {
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/question" }
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "data"],
+      "properties": {
+        "kind": {
+          "description": "Question kind.",
+          "const": "choice"
+        },
+        "prompt": {
+          "description": "Markdown shown above the options.",
+          "type": "string"
+        },
+        "data": { "$ref": "#/$defs/choiceData" },
+        "explanation": {
+          "description": "Markdown shown after answering.",
+          "type": "string"
+        }
+      }
+    },
+    "choiceData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["options"],
+      "properties": {
+        "multiple": {
+          "description": "false shows radio buttons (exactly one correct option), true shows checkboxes.",
+          "type": "boolean"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/option" }
+        }
+      }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "description": "Markdown text of the option.",
+          "type": "string",
+          "minLength": 1
+        },
+        "correct": { "type": "boolean" },
+        "feedback": {
+          "description": "Markdown shown when the learner selected this option.",
+          "type": "string"
+        }
+      }
+    },
+    "codingData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace"],
+      "properties": {
+        "workspace": {
+          "description": "Files and folders copied to the learner folder.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/workspaceItem" }
+        }
+      }
+    },
+    "workspaceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "description": "Path from the activity folder to a file or folder.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

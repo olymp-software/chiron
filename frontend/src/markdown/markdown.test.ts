@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { courseImages } from './images'
+import { activityImages, courseImages } from './images'
 import { renderMarkdown } from './markdown'
 
 describe('renderMarkdown', () => {
@@ -81,4 +81,20 @@ describe('courseImages', () => {
   it('keeps encoded characters and drops query and hash', () => {
     expect(courseImages('k')('my%20pic.png?v=1#x')).toBe('/course-files/k/my%20pic.png')
   })
+})
+
+describe('activityImages', () => {
+  const resolve = activityImages('k', 'basics/hello')
+
+  it('resolves an image inside the activity folder', () => {
+    expect(resolve('images/diagram.png')).toBe('/course-files/k/basics/hello/images/diagram.png')
+    expect(resolve('images/../diagram.png')).toBe('/course-files/k/basics/hello/diagram.png')
+  })
+
+  it.each(['../../images/logo.png', '../other/a.png', 'https://example.com/a.png'])(
+    'does not load %s',
+    (src) => {
+      expect(resolve(src)).toBeNull()
+    },
+  )
 })

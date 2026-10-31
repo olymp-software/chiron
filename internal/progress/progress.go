@@ -21,11 +21,13 @@ import (
 const formatVersion = 1
 
 // Progress is the progress of one course. Current and Completed hold activity
-// slugs.
+// slugs. CourseCompleted is stored, so the library can show it without reading
+// the course; Resolve keeps it in line with the course order.
 type Progress struct {
-	Version   int      `json:"version"`
-	Current   string   `json:"current"`
-	Completed []string `json:"completed"`
+	Version         int      `json:"version"`
+	Current         string   `json:"current"`
+	Completed       []string `json:"completed"`
+	CourseCompleted bool     `json:"courseCompleted"`
 }
 
 // Store is the progress of all courses in one folder. Its methods are safe for
@@ -103,7 +105,8 @@ func (s *Store) Update(key string, change func(p Progress) Progress) (Progress, 
 		return Progress{}, err
 	}
 	next := change(p)
-	if next.Current == p.Current && slices.Equal(next.Completed, p.Completed) {
+	if next.Current == p.Current && slices.Equal(next.Completed, p.Completed) &&
+		next.CourseCompleted == p.CourseCompleted {
 		return p, nil
 	}
 	if p.Version > formatVersion {
@@ -143,21 +146,20 @@ func (s *Store) lock(key string) func() {
 
 func (s *Store) path(key string) string { return filepath.Join(s.dir, key+".json") }
 
-// Resolve returns p with its current activity moved into order, the activity
-// slugs of the course in course order. A current activity still in order is
-// kept. Otherwise the current activity becomes the one after the furthest
-// completed activity still in order, the last activity if that one is last,
-// and the first activity if no completed activity is left.
+// Resolve returns p reconciled with order, the activity slugs of the course in
+// course order. The current activity becomes the first activity of order that
+// is not completed, or the last one when all are; this covers a removed
+// current activity and activities added anywhere in the course.
+// CourseCompleted becomes whether every activity of order is completed.
 func Resolve(order []string, p Progress) Progress {
-	if len(order) == 0 || slices.Contains(order, p.Current) {
+	if len(order) == 0 {
 		return p
 	}
-	last := -1
-	for i, slug := range order {
-		if slices.Contains(p.Completed, slug) {
-			last = i
-		}
+	i := slices.IndexFunc(order, func(slug string) bool { return !slices.Contains(p.Completed, slug) })
+	p.CourseCompleted = i < 0
+	if i < 0 {
+		i = len(order) - 1
 	}
-	p.Current = order[min(last+1, len(order)-1)]
+	p.Current = order[i]
 	return p
 }
