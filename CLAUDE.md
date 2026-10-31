@@ -24,6 +24,8 @@ Single tests: extra args pass through after `--`.
 
 Only `./internal/...` is tested; the root `main` package needs `frontend/dist` and the Wails toolchain.
 
+Test courses for manual checks in the app go to `tmp/courses/` in the repo root, never to `/tmp` or the scratchpad. Name them `NN-<name>` with the next free number (e.g. `13-theory-activities`) and add their checks to `tmp/courses/CHECKLIST.md`.
+
 ## Architecture
 
 - `main.go` / `app.go` (root package): Wails wiring. `App` is the only bound object — a thin facade delegating to `internal/library`. Its methods never return Go `error` (Wails would stringify it); they return `*Result` structs with an `Error *apperr.Error`. Uncoded errors are logged and replaced with `apperr.Internal`.

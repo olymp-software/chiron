@@ -98,12 +98,15 @@ onMounted(load)
           :disabled="blocked || syncing"
           @click="router.push(`/courses/${courseKey}`)"
         >
-          {{ $t('overview.continue') }}
+          {{ overview.completed ? $t('overview.review') : $t('overview.continue') }}
         </button>
         <button v-else :disabled="blocked || syncing || enrolling" @click="enroll">
           {{ $t('overview.enroll') }}
         </button>
       </div>
+      <p v-if="overview.completed" class="completed" role="status">
+        {{ $t('overview.completed') }}
+      </p>
       <p v-if="overview.check" class="check-status" :class="overview.check">
         {{ $t(`overview.checkStatus.${overview.check}`) }}
       </p>
@@ -153,8 +156,13 @@ dd {
   overflow-wrap: anywhere;
 }
 
-.check-status {
+.check-status,
+.completed {
   margin: 0;
+}
+
+.completed {
+  font-weight: bold;
 }
 
 .check-status.passed {

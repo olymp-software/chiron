@@ -58,7 +58,8 @@ async function add() {
       <li v-for="c in courses" :key="c.key">
         <button class="course" @click="router.push(`/library/${c.key}`)">
           <span>{{ c.title }}</span>
-          <span v-if="c.enrolled" class="enrolled">{{ $t('library.enrolled') }}</span>
+          <span v-if="c.completed" class="status">{{ $t('library.completed') }}</span>
+          <span v-else-if="c.enrolled" class="status">{{ $t('library.enrolled') }}</span>
         </button>
       </li>
     </ul>
@@ -100,7 +101,7 @@ ul {
   text-align: left;
 }
 
-.enrolled {
+.status {
   opacity: 0.7;
   font-size: 0.875rem;
 }

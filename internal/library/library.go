@@ -43,11 +43,13 @@ type Entry struct {
 	CheckHash string `json:"checkHash,omitempty"`
 }
 
-// Course is a course in the library list. Enrolled is not stored in
-// library.json: a course is enrolled exactly when it has progress.
+// Course is a course in the library list. Enrolled and Completed are not
+// stored in library.json: a course is enrolled exactly when it has progress,
+// and its progress tells whether it is completed.
 type Course struct {
 	Entry
-	Enrolled bool `json:"enrolled"`
+	Enrolled  bool `json:"enrolled"`
+	Completed bool `json:"completed"`
 }
 
 type libraryFile struct {
@@ -91,7 +93,8 @@ func Open(dataDir string, log *slog.Logger) (*Library, error) {
 	return l, nil
 }
 
-// Courses returns the added courses with their stored titles and enrollment.
+// Courses returns the added courses with their stored titles, enrollment and
+// completion.
 func (l *Library) Courses() ([]Course, error) {
 	entries, err := l.List()
 	if err != nil {
@@ -99,9 +102,21 @@ func (l *Library) Courses() ([]Course, error) {
 	}
 	courses := make([]Course, len(entries))
 	for i, e := range entries {
-		courses[i] = Course{Entry: e, Enrolled: l.enrolled(e.Key)}
+		courses[i] = Course{Entry: e}
+		courses[i].Enrolled, courses[i].Completed = l.enrollment(e.Key)
 	}
 	return courses, nil
+}
+
+// enrollment reports whether the course with key is enrolled and completed,
+// from its progress alone. An unreadable progress file is logged and counts
+// as not completed.
+func (l *Library) enrollment(key string) (enrolled, completed bool) {
+	if !l.enrolled(key) {
+		return false, false
+	}
+	p, err := l.progress.Load(key)
+	return true, err == nil && p.CourseCompleted
 }
 
 // enrolled reports whether the course with key has progress. A progress file

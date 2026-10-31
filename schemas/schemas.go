@@ -8,3 +8,8 @@ import _ "embed"
 //
 //go:embed course/v1.json
 var CourseV1 []byte
+
+// ActivityV1 is the JSON Schema of activity.yaml, schema version 1.
+//
+//go:embed activity/v1.json
+var ActivityV1 []byte

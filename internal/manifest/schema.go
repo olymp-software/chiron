@@ -9,10 +9,17 @@ import (
 	"github.com/olymp-software/chiron/schemas"
 )
 
-const courseSchemaURL = "https://github.com/olymp-software/chiron/schemas/course/v1.json"
+const (
+	courseSchemaURL   = "https://github.com/olymp-software/chiron/schemas/course/v1.json"
+	activitySchemaURL = "https://github.com/olymp-software/chiron/schemas/activity/v1.json"
+)
 
 var courseSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	return compileSchema(courseSchemaURL, schemas.CourseV1)
+})
+
+var activitySchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
+	return compileSchema(activitySchemaURL, schemas.ActivityV1)
 })
 
 // compileSchema compiles an embedded schema registered under url, so the

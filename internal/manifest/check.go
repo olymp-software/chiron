@@ -10,7 +10,7 @@ import (
 )
 
 // check returns the problems the schema cannot express: slug uniqueness and
-// the check path.
+// the check path in the course root.
 func (c *Course) check(root string) []apperr.Problem {
 	var problems []apperr.Problem
 	sections := map[string]bool{}
@@ -30,24 +30,60 @@ func (c *Course) check(root string) []apperr.Problem {
 		}
 	}
 	if c.Check != "" {
-		if p, ok := checkPath(root, "check", c.Check); !ok {
+		if p, ok := checkPath(root, "check", c.Check, false); !ok {
 			problems = append(problems, p)
 		}
 	}
 	return problems
 }
 
-// checkPath checks a path from a course file: relative, / separated, no ..,
-// and an existing file in the course root.
-func checkPath(root, field, path string) (apperr.Problem, bool) {
+// check returns the problems the schema cannot express: paths inside the
+// activity folder dir and the number of correct options.
+func (a *Activity) check(dir string) []apperr.Problem {
+	var problems []apperr.Problem
+	for i, c := range a.Controls {
+		if p, ok := checkPath(dir, fmt.Sprintf("controls[%d].script", i), c.Script, false); !ok {
+			problems = append(problems, p)
+		}
+	}
+	if a.Coding != nil {
+		for i, w := range a.Coding.Workspace {
+			if p, ok := checkPath(dir, fmt.Sprintf("data.workspace[%d].path", i), w.Path, true); !ok {
+				problems = append(problems, p)
+			}
+		}
+	}
+	if a.Quiz != nil {
+		for i, q := range a.Quiz.Questions {
+			correct := 0
+			for _, o := range q.Data.Options {
+				if o.Correct {
+					correct++
+				}
+			}
+			path := fmt.Sprintf("data.questions[%d].data.options", i)
+			switch {
+			case !q.Data.Multiple && correct != 1:
+				problems = append(problems, apperr.NewProblem(apperr.OneCorrectOptionRequired, path))
+			case q.Data.Multiple && correct == 0:
+				problems = append(problems, apperr.NewProblem(apperr.CorrectOptionRequired, path))
+			}
+		}
+	}
+	return problems
+}
+
+// checkPath checks a path from a course file: relative to base, / separated,
+// no .., and an existing file in base, or a folder if dirOK.
+func checkPath(base, field, path string, dirOK bool) (apperr.Problem, bool) {
 	if !validRelPath(path) {
 		return apperr.NewProblem(apperr.PathInvalid, field, "path", path), false
 	}
-	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(path)))
-	if err != nil || !info.Mode().IsRegular() {
-		return apperr.NewProblem(apperr.PathNotFound, field, "path", path), false
+	info, err := os.Stat(filepath.Join(base, filepath.FromSlash(path)))
+	if err == nil && (info.Mode().IsRegular() || dirOK && info.IsDir()) {
+		return apperr.Problem{}, true
 	}
-	return apperr.Problem{}, true
+	return apperr.NewProblem(apperr.PathNotFound, field, "path", path), false
 }
 
 func validRelPath(path string) bool {

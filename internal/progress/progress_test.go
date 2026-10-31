@@ -66,7 +66,7 @@ func TestEnroll(t *testing.T) {
 	if !reflect.DeepEqual(p, want) {
 		t.Errorf("progress = %+v, want %+v", p, want)
 	}
-	want1 := "{\n  \"version\": 1,\n  \"current\": \"hello\",\n  \"completed\": []\n}\n"
+	want1 := "{\n  \"version\": 1,\n  \"current\": \"hello\",\n  \"completed\": [],\n  \"courseCompleted\": false\n}\n"
 	if got := readFile(t, filepath.Join(dir, "go-1.json")); got != want1 {
 		t.Errorf("file = %q, want %q", got, want1)
 	}
@@ -161,13 +161,14 @@ func TestResolve(t *testing.T) {
 		completed []string
 		want      string
 	}{
-		{name: "current kept", current: "c", completed: []string{"a", "b"}, want: "c"},
-		{name: "after the last completed", current: "gone", completed: []string{"a", "b"}, want: "c"},
-		{name: "furthest completed in new order", current: "gone", completed: []string{"c", "a"}, want: "d"},
+		{name: "fresh", current: "a", completed: []string{}, want: "a"},
+		{name: "linear", current: "c", completed: []string{"a", "b"}, want: "c"},
+		{name: "current removed", current: "gone", completed: []string{"a", "b"}, want: "c"},
 		{name: "removed completed ignored", current: "gone", completed: []string{"a", "x"}, want: "b"},
 		{name: "nothing completed left", current: "gone", completed: []string{"x"}, want: "a"},
-		{name: "nothing completed", current: "gone", completed: []string{}, want: "a"},
-		{name: "last completed is last", current: "gone", completed: []string{"a", "d"}, want: "d"},
+		{name: "inserted before current", current: "d", completed: []string{"a", "c"}, want: "b"},
+		{name: "added after the finished last", current: "b", completed: []string{"a", "b"}, want: "c"},
+		{name: "all completed", current: "b", completed: []string{"a", "b", "c", "d"}, want: "d"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -180,6 +181,29 @@ func TestResolve(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got.Completed, tt.completed) {
 				t.Errorf("completed = %v, want unchanged %v", got.Completed, tt.completed)
+			}
+		})
+	}
+}
+
+func TestResolveCourseCompleted(t *testing.T) {
+	tests := []struct {
+		name      string
+		order     []string
+		completed bool
+		want      bool
+	}{
+		{name: "all completed", order: []string{"a", "b"}, want: true},
+		{name: "activity added after the last", order: []string{"a", "b", "c"}, completed: true, want: false},
+		{name: "activity inserted in the middle", order: []string{"a", "c", "b"}, completed: true, want: false},
+		{name: "activity removed, rest completed", order: []string{"a"}, want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := Progress{Version: 1, Current: "b", Completed: []string{"a", "b"}, CourseCompleted: tt.completed}
+
+			if got := Resolve(tt.order, p); got.CourseCompleted != tt.want {
+				t.Errorf("courseCompleted = %v, want %v", got.CourseCompleted, tt.want)
 			}
 		})
 	}

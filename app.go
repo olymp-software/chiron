@@ -81,6 +81,23 @@ type TreeResult struct {
 	Error *apperr.Error `json:"error,omitempty"`
 }
 
+// ActivityResult is an activity of an enrolled course or the error that
+// prevented reading it. A broken activity is not an error here: the activity
+// carries the activity error.
+type ActivityResult struct {
+	Activity library.Activity `json:"activity"`
+	Error    *apperr.Error    `json:"error,omitempty"`
+}
+
+// CompleteResult is the activity to open after completing one ("" after the
+// last activity) with the updated course tree, or the error that prevented
+// completing it.
+type CompleteResult struct {
+	Next  string        `json:"next"`
+	Tree  library.Tree  `json:"tree"`
+	Error *apperr.Error `json:"error,omitempty"`
+}
+
 // StartCheckResult is the run id of a started environment check or the error
 // that prevented starting it.
 type StartCheckResult struct {
@@ -159,6 +176,19 @@ func (a *App) EnterCourse(key string) EnterResult {
 func (a *App) CourseTree(key string) TreeResult {
 	t, err := a.lib.Tree(key)
 	return TreeResult{Tree: t, Error: a.coded(err)}
+}
+
+// Activity returns an available activity of an enrolled course.
+func (a *App) Activity(key, slug string) ActivityResult {
+	act, err := a.lib.Activity(key, slug)
+	return ActivityResult{Activity: act, Error: a.coded(err)}
+}
+
+// CompleteActivity completes an available activity of an enrolled course: the
+// effect of Next and Finish course.
+func (a *App) CompleteActivity(key, slug string) CompleteResult {
+	next, t, err := a.lib.CompleteActivity(key, slug)
+	return CompleteResult{Next: next, Tree: t, Error: a.coded(err)}
 }
 
 // StartCheck starts the environment check of a course. Its output and result
