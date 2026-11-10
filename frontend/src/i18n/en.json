@@ -10,17 +10,19 @@
   },
   "library": {
     "title": "Library",
-    "add": "Add course from folder",
+    "add": "Add from folder",
     "adding": "Adding…",
-    "pickFolder": "Choose the course folder",
-    "empty": "No courses yet. Add a course from a local folder.",
+    "pickFolder": "Choose the folder of a course or workshop",
+    "empty": "Nothing here yet. Add a course or a workshop from a local folder.",
+    "courses": "Courses",
+    "workshops": "Workshops",
     "enrolled": "Enrolled",
     "completed": "Completed"
   },
   "scriptWarning": {
-    "title": "This course will run scripts",
-    "text": "A course runs its scripts on your computer with your permissions. Add it only if you trust its author.",
-    "confirm": "Add course",
+    "title": "This folder may contain scripts",
+    "text": "Courses and workshops may contain scripts that will run in your environment with your permissions. Add this one only if you trust its author.",
+    "confirm": "Add",
     "cancel": "Cancel"
   },
   "callout": {
@@ -40,6 +42,7 @@
     "continue": "Continue",
     "review": "Review",
     "completed": "Course completed",
+    "workshop": "Workshop",
     "checkEnvironment": "Check environment",
     "checkStatus": {
       "notChecked": "Environment not checked",
@@ -66,8 +69,23 @@
     "markCompleted": "Completed",
     "markCurrent": "Current activity"
   },
+  "workshop": {
+    "finish": "Finish workshop",
+    "folder": "Workshop folder",
+    "copy": "Copy path",
+    "copied": "Copied",
+    "openEditor": "Open in external editor",
+    "solution": "Solution",
+    "check": "Check",
+    "stop": "Stop: {label}",
+    "leaveTitle": "Scripts are running",
+    "leaveText": "Leaving this activity stops the running scripts.",
+    "leaveCancel": "Stay",
+    "leaveConfirm": "Stop and leave"
+  },
   "errors": {
-    "manifestMissing": "The course has no course.yaml in its root.",
+    "manifestMissing": "The folder has neither course.yaml nor workshop.yaml in its root.",
+    "manifestConflict": "The folder has both course.yaml and workshop.yaml in its root. Keep only one.",
     "manifestInvalid": "{file} has errors:",
     "unsupportedSchemaVersion": "{file} uses schema version {version}, which requires a newer version of the app.",
     "yamlSyntax": "{file} is not valid YAML near line {line}.",
@@ -105,6 +123,10 @@
     "checkRequired": "Run the environment check first: it must succeed before you can take the course.",
     "checkRunning": "The environment check of this course is already running.",
     "checkReadFailed": "Could not read the environment check “{path}” in the course.",
+    "fileCopyFailed": "Could not copy “{path}” to the workshop folder.",
+    "workshopFolderFailed": "Could not open the workshop folder.",
+    "scriptRunning": "This script cannot start until the one running has finished.",
+    "scriptStartFailed": "Could not start “{path}”.",
     "internal": "Unexpected error. Details are in the log."
   }
 }

@@ -1,7 +1,15 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { CourseOverview, EnrollCourse, SyncCourse } from '../../wailsjs/go/main/App'
+import {
+  CancelCheck,
+  CourseOverview,
+  EnrollCourse,
+  StartCheck,
+  StartWorkshopControl,
+  StopRun,
+  SyncCourse,
+} from '../../wailsjs/go/main/App'
 import type { apperr, library } from '../../wailsjs/go/models'
 import ErrorView from '../errors/ErrorView.vue'
 import { courseImages } from '../markdown/images'
@@ -19,6 +27,8 @@ const error = ref<apperr.Error>()
 const syncing = ref(false)
 const enrolling = ref(false)
 const checking = ref(false)
+// control is the index of the workshop control running in the modal.
+const control = ref<number>()
 
 // blocked is true while Enroll and Continue are unavailable: the course is
 // broken or its environment check has not passed for the current check file.
@@ -76,6 +86,7 @@ onMounted(load)
     <p v-if="!overview && !error">{{ $t('overview.loading') }}</p>
     <template v-if="overview">
       <h1>{{ overview.title }}</h1>
+      <p v-if="overview.type === 'workshop'" class="mark">{{ $t('overview.workshop') }}</p>
       <dl>
         <dt>{{ $t('overview.source') }}</dt>
         <dd>
@@ -94,6 +105,14 @@ onMounted(load)
           {{ $t('overview.checkEnvironment') }}
         </button>
         <button
+          v-for="(label, i) in overview.controls ?? []"
+          :key="i"
+          :disabled="syncing"
+          @click="control = i"
+        >
+          {{ label }}
+        </button>
+        <button
           v-if="overview.enrolled"
           :disabled="blocked || syncing"
           @click="router.push(`/courses/${courseKey}`)"
@@ -110,7 +129,20 @@ onMounted(load)
       <p v-if="overview.check" class="check-status" :class="overview.check">
         {{ $t(`overview.checkStatus.${overview.check}`) }}
       </p>
-      <CheckModal v-if="checking" :course-key="courseKey" @closed="checkClosed" />
+      <CheckModal
+        v-if="checking"
+        :title="$t('check.title')"
+        :start="() => StartCheck(courseKey)"
+        :cancel="() => CancelCheck(courseKey)"
+        @closed="checkClosed"
+      />
+      <CheckModal
+        v-if="control !== undefined"
+        :title="overview.controls?.[control] ?? ''"
+        :start="() => StartWorkshopControl(courseKey, control ?? 0)"
+        :cancel="StopRun"
+        @closed="control = undefined"
+      />
     </template>
     <ErrorView v-if="error" :error="error" />
     <template v-if="overview">
@@ -139,8 +171,14 @@ h1 {
   margin: 0;
 }
 
+.mark {
+  margin: 0;
+  opacity: 0.7;
+}
+
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 

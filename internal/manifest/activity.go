@@ -15,9 +15,12 @@ import (
 // ActivityFile is the name of the activity file in the activity folder.
 const ActivityFile = "activity.yaml"
 
-// activitySchemaVersion is the highest activity.yaml schema version the app
-// understands.
-const activitySchemaVersion = 1
+// Highest activity.yaml schema versions the app understands; they are
+// independent.
+const (
+	activitySchemaVersion         = 1
+	workshopActivitySchemaVersion = 1
+)
 
 // Activity types.
 const (
@@ -39,6 +42,16 @@ type Activity struct {
 	Quiz *Quiz `yaml:"-"`
 	// Coding is the data of a coding activity, nil for other types.
 	Coding *Coding `yaml:"-"`
+}
+
+// WorkshopActivity is a valid activity.yaml of a workshop.
+type WorkshopActivity struct {
+	Version      int             `yaml:"version"`
+	TheoryBlocks []TheoryBlock   `yaml:"theory_blocks"`
+	Solution     string          `yaml:"solution"`
+	Check        string          `yaml:"check"`
+	Controls     []Control       `yaml:"controls"`
+	Files        []WorkspaceItem `yaml:"files"`
 }
 
 // TheoryBlock is one item of theory_blocks.
@@ -107,23 +120,15 @@ func ActivityPath(section, slug string) string {
 func ParseActivity(courseRoot, section, slug string) (*Activity, error) {
 	file := ActivityPath(section, slug)
 	dir := filepath.Join(courseRoot, section, slug)
-	data, err := os.ReadFile(filepath.Join(courseRoot, filepath.FromSlash(file)))
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, apperr.New(apperr.ActivityFileMissing, "file", file)
-	}
+	data, doc, err := readActivity(courseRoot, file)
 	if err != nil {
-		return nil, apperr.New(apperr.CourseReadFailed, "path", file)
-	}
-
-	var doc any
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, yamlSyntaxError(file, err)
+		return nil, err
 	}
 	if err := precheckActivity(file, doc); err != nil {
 		return nil, err
 	}
 
-	if problems, err := validateSchema(activitySchema, doc); err != nil {
+	if problems, err := validateSchema(courseActivitySchema, doc); err != nil {
 		return nil, err
 	} else if len(problems) > 0 {
 		return nil, invalid(file, problems)
@@ -154,10 +159,55 @@ func ParseActivity(courseRoot, section, slug string) (*Activity, error) {
 	return &a, nil
 }
 
+// ParseWorkshopActivity reads and validates the activity.yaml of the activity
+// slug in section of a workshop. Errors are as in ParseActivity.
+func ParseWorkshopActivity(root, section, slug string) (*WorkshopActivity, error) {
+	file := ActivityPath(section, slug)
+	data, doc, err := readActivity(root, file)
+	if err != nil {
+		return nil, err
+	}
+	if err := precheckWorkshopActivity(file, doc); err != nil {
+		return nil, err
+	}
+
+	if problems, err := validateSchema(workshopActivitySchema, doc); err != nil {
+		return nil, err
+	} else if len(problems) > 0 {
+		return nil, invalid(file, problems)
+	}
+
+	var a WorkshopActivity
+	if err := yaml.Unmarshal(data, &a); err != nil {
+		return nil, yamlSyntaxError(file, err)
+	}
+	if problems := a.check(filepath.Join(root, section, slug)); len(problems) > 0 {
+		return nil, invalid(file, problems)
+	}
+	return &a, nil
+}
+
+// readActivity returns the content of the activity file at the course-relative
+// path file and its decoded YAML.
+func readActivity(root, file string) ([]byte, any, error) {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil, apperr.New(apperr.ActivityFileMissing, "file", file)
+	}
+	if err != nil {
+		return nil, nil, apperr.New(apperr.CourseReadFailed, "path", file)
+	}
+	var doc any
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return nil, nil, yamlSyntaxError(file, err)
+	}
+	return data, doc, nil
+}
+
 // precheckActivity reports what requires a newer app version: a higher
 // schema version, an unknown type or an unknown theory block kind. Values of
 // the wrong type are left to the schema.
-func precheckActivity(file string, doc any) *apperr.Error {
+func precheckActivity(file string, doc any) error {
 	m, ok := doc.(map[string]any)
 	if !ok {
 		return nil
@@ -168,6 +218,24 @@ func precheckActivity(file string, doc any) *apperr.Error {
 	if t, ok := m["type"].(string); ok && t != TypeTheory && t != TypeQuiz && t != TypeCoding {
 		return apperr.New(apperr.UnsupportedActivityType, "file", file, "type", t)
 	}
+	return precheckBlocks(file, m)
+}
+
+// precheckWorkshopActivity is precheckActivity for a workshop, where any type
+// is left to the schema, which forbids the field.
+func precheckWorkshopActivity(file string, doc any) error {
+	m, ok := doc.(map[string]any)
+	if !ok {
+		return nil
+	}
+	if v, ok := m["version"].(int); ok && v > workshopActivitySchemaVersion {
+		return unsupportedVersion(file, v)
+	}
+	return precheckBlocks(file, m)
+}
+
+// precheckBlocks reports an unknown theory block kind.
+func precheckBlocks(file string, m map[string]any) error {
 	blocks, _ := m["theory_blocks"].([]any)
 	for _, b := range blocks {
 		block, _ := b.(map[string]any)

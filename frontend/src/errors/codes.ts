@@ -2,6 +2,7 @@
 
 export const errorCodes = [
   'manifestMissing',
+  'manifestConflict',
   'manifestInvalid',
   'unsupportedSchemaVersion',
   'yamlSyntax',
@@ -39,6 +40,10 @@ export const errorCodes = [
   'checkRequired',
   'checkRunning',
   'checkReadFailed',
+  'fileCopyFailed',
+  'workshopFolderFailed',
+  'scriptRunning',
+  'scriptStartFailed',
   'internal',
 ] as const
 

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sync"
 	"syscall"
+	"time"
 )
 
 // tree is the process tree of a run: every external command starts in its
@@ -28,14 +29,14 @@ func (t *tree) prepare(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
 
-// add registers the started cmd; a command started after kill is killed.
+// add registers the started cmd; a command started after kill is killed and
+// still registered, so close waits for it too.
 func (t *tree) add(cmd *exec.Cmd) error {
 	pgid := cmd.Process.Pid
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.killed {
 		_ = syscall.Kill(-pgid, syscall.SIGKILL)
-		return nil
 	}
 	t.pgids = append(t.pgids, pgid)
 	return nil
@@ -68,5 +69,21 @@ func (t *tree) kill() {
 	}
 }
 
-// close kills what is left when the script exits.
-func (t *tree) close() { t.kill() }
+// close kills what is left when the script exits and waits until it is gone:
+// SIGKILL only marks a process for death.
+// The groups are read anew on every check, so a command added meanwhile is
+// waited for as well.
+func (t *tree) close() {
+	t.kill()
+	deadline := time.Now().Add(closeWait)
+	for t.anyAlive() && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+}
+
+// anyAlive reports whether a registered group still has a process.
+func (t *tree) anyAlive() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return slices.ContainsFunc(t.pgids, func(pgid int) bool { return syscall.Kill(-pgid, 0) == nil })
+}

@@ -62,12 +62,13 @@ func appErr(t *testing.T, err error) *apperr.Error {
 func TestParseCourseValid(t *testing.T) {
 	root := writeCourse(t, validCourse, "scripts/check.sh")
 
-	c, err := ParseCourse(root)
+	c, err := Parse(root)
 	if err != nil {
-		t.Fatalf("ParseCourse: %v", err)
+		t.Fatalf("Parse: %v", err)
 	}
 
 	want := &Course{
+		Type:        ContentCourse,
 		Version:     1,
 		Title:       "Go Basics",
 		Description: "Go fundamentals",
@@ -83,10 +84,108 @@ func TestParseCourseValid(t *testing.T) {
 }
 
 func TestParseCourseMissing(t *testing.T) {
-	_, err := ParseCourse(t.TempDir())
+	_, err := Parse(t.TempDir())
 
 	if got := appErr(t, err); got.Code != apperr.ManifestMissing {
 		t.Errorf("code = %s, want %s", got.Code, apperr.ManifestMissing)
+	}
+}
+
+const validWorkshop = `version: 1
+title: Kubernetes rollouts
+check: scripts/check.sh
+controls:
+  - label: Check leftovers
+    script: scripts/leftovers.sh
+sections:
+  - slug: basics
+    title: First steps
+    activities:
+      - slug: hello
+        title: Hello
+`
+
+func writeWorkshop(t *testing.T, yaml string, files ...string) string {
+	t.Helper()
+	root := writeCourse(t, "", files...)
+	if err := os.Remove(filepath.Join(root, CourseFile)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, WorkshopFile), []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func TestParseWorkshopValid(t *testing.T) {
+	root := writeWorkshop(t, validWorkshop, "scripts/check.sh", "scripts/leftovers.sh")
+
+	c, err := Parse(root)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+
+	want := &Course{
+		Type:     ContentWorkshop,
+		Version:  1,
+		Title:    "Kubernetes rollouts",
+		Check:    "scripts/check.sh",
+		Controls: []Control{{Label: "Check leftovers", Script: "scripts/leftovers.sh"}},
+		Sections: []Section{
+			{Slug: "basics", Title: "First steps", Activities: []ActivityRef{{Slug: "hello", Title: "Hello"}}},
+		},
+	}
+	if !reflect.DeepEqual(c, want) {
+		t.Errorf("workshop = %+v\nwant %+v", c, want)
+	}
+}
+
+func TestParseBothManifests(t *testing.T) {
+	root := writeCourse(t, validCourse, "scripts/check.sh")
+	if err := os.WriteFile(filepath.Join(root, WorkshopFile), []byte(validWorkshop), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := appErr(t, mustFail(t, root))
+	if got.Code != apperr.ManifestConflict {
+		t.Errorf("code = %s, want %s", got.Code, apperr.ManifestConflict)
+	}
+}
+
+func TestParseWorkshopNewerSchema(t *testing.T) {
+	root := writeWorkshop(t, "version: 2\ntitle: X\nauthor: Someone\n")
+
+	got := appErr(t, mustFail(t, root))
+	want := apperr.New(apperr.UnsupportedSchemaVersion, "file", WorkshopFile, "version", "2")
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("error = %+v, want %+v", got, want)
+	}
+}
+
+func TestParseWorkshopControlOutside(t *testing.T) {
+	root := writeWorkshop(t, "version: 1\ntitle: X\n"+
+		"controls:\n  - {label: Leftovers, script: ../leftovers.sh}\n"+
+		"sections: [{slug: a, title: A, activities: [{slug: b, title: B}]}]\n")
+
+	got := appErr(t, mustFail(t, root))
+	if got.Code != apperr.ManifestInvalid || got.Params["file"] != WorkshopFile {
+		t.Fatalf("error = %v, want %s in %s", got, apperr.ManifestInvalid, WorkshopFile)
+	}
+	want := []apperr.Problem{apperr.NewProblem(apperr.PathInvalid, "controls[0].script", "path", "../leftovers.sh")}
+	if !reflect.DeepEqual(got.Problems, want) {
+		t.Errorf("problems = %+v\nwant %+v", got.Problems, want)
+	}
+}
+
+func TestParseWorkshopControlConcurrency(t *testing.T) {
+	root := writeWorkshop(t, "version: 1\ntitle: X\n"+
+		"controls:\n  - {label: Up, script: up.sh, concurrency: server}\n"+
+		"sections: [{slug: a, title: A, activities: [{slug: b, title: B}]}]\n", "up.sh")
+
+	got := appErr(t, mustFail(t, root))
+	want := []apperr.Problem{apperr.NewProblem(apperr.UnknownField, "controls[0]", "field", "concurrency")}
+	if !reflect.DeepEqual(got.Problems, want) {
+		t.Errorf("problems = %+v\nwant %+v", got.Problems, want)
 	}
 }
 
@@ -112,9 +211,9 @@ func TestParseCourseNewerSchema(t *testing.T) {
 
 func mustFail(t *testing.T, root string) error {
 	t.Helper()
-	c, err := ParseCourse(root)
+	c, err := Parse(root)
 	if err == nil {
-		t.Fatalf("ParseCourse = %+v, want an error", c)
+		t.Fatalf("Parse = %+v, want an error", c)
 	}
 	return err
 }
@@ -206,6 +305,12 @@ func TestParseCourseProblems(t *testing.T) {
 			want: []apperr.Problem{apperr.NewProblem(apperr.PathInvalid, "check", "path", "C:/check.sh")},
 		},
 		{
+			name:  "controls in course.yaml",
+			yaml:  "version: 1\ntitle: X\ncontrols: [{label: Up, script: up.sh}]\nsections: [{slug: a, title: A, activities: [{slug: b, title: B}]}]\n",
+			files: []string{"up.sh"},
+			want:  []apperr.Problem{apperr.NewProblem(apperr.UnknownField, "", "field", "controls")},
+		},
+		{
 			name: "check missing",
 			yaml: "version: 1\ntitle: X\ncheck: scripts/check.sh\nsections: [{slug: a, title: A, activities: [{slug: b, title: B}]}]\n",
 			want: []apperr.Problem{apperr.NewProblem(apperr.PathNotFound, "check", "path", "scripts/check.sh")},
@@ -276,7 +381,12 @@ func schemaKeywords(schema any, out map[string]bool) {
 }
 
 func TestEverySchemaKeywordHasCode(t *testing.T) {
-	for name, data := range map[string][]byte{"course": schemas.CourseV1, "activity": schemas.ActivityV1} {
+	for name, data := range map[string][]byte{
+		"course":            schemas.CourseV1,
+		"course activity":   schemas.CourseActivityV1,
+		"workshop":          schemas.WorkshopV1,
+		"workshop activity": schemas.WorkshopActivityV1,
+	} {
 		var schema any
 		if err := json.Unmarshal(data, &schema); err != nil {
 			t.Fatal(err)

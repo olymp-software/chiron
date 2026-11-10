@@ -59,6 +59,8 @@ func (b *syncBuffer) String() string {
 type started struct {
 	out  syncBuffer
 	done chan runtime.Result
+	// stop stops a run of Runs; it is nil for the environment check.
+	stop func()
 }
 
 func startCheck(t *testing.T, l *Library, key string) *started {

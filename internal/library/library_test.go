@@ -57,9 +57,12 @@ func courseFolder(t *testing.T, title string) string {
 
 func openLib(t *testing.T, dataDir string) *Library {
 	t.Helper()
-	l, err := Open(dataDir, slog.New(slog.DiscardHandler))
+	l, err := Open(dataDir, filepath.Join(dataDir, "learner"), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
+	}
+	if err := l.Recover(); err != nil {
+		t.Fatalf("Recover: %v", err)
 	}
 	return l
 }
@@ -128,7 +131,7 @@ func TestLibraryRoundTrip(t *testing.T) {
 		t.Fatalf("List: %v", err)
 	}
 
-	want := []Entry{{Origin: OriginLocal, Source: src, Key: source.Key(src), Title: "Go Basics"}}
+	want := []Entry{{Origin: OriginLocal, Source: src, Key: source.Key(src), Title: "Go Basics", Type: manifest.ContentCourse}}
 	if !reflect.DeepEqual(courses, want) || e != want[0] {
 		t.Errorf("courses = %+v, entry = %+v, want %+v", courses, e, want)
 	}

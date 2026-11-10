@@ -1,6 +1,5 @@
 import { computed, ref } from 'vue'
-import { CancelCheck, StartCheck } from '../../wailsjs/go/main/App'
-import type { apperr } from '../../wailsjs/go/models'
+import type { apperr, main } from '../../wailsjs/go/models'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 
 // Payloads of the check:output and check:exit events (app.go).
@@ -17,10 +16,19 @@ export interface CheckExit {
 
 type CheckEvent = { output: CheckOutput } | { exit: CheckExit }
 
-// useCheckRun runs the environment check of a course and passes its output to
+// StartRun starts a script; CancelRun stops the run with the given id and
+// returns after it has ended.
+export type StartRun = () => Promise<main.StartCheckResult>
+export type CancelRun = (runId: number) => Promise<main.ErrorResult>
+
+// useCheckRun runs a script through startRun and passes its output to
 // onOutput. Events of other runs are dropped; events that arrive before
-// StartCheck returns the run id are held until it is known.
-export function useCheckRun(courseKey: string, onOutput: (text: string) => void) {
+// startRun returns the run id are held until it is known.
+export function useCheckRun(
+  startRun: StartRun,
+  cancelRun: CancelRun,
+  onOutput: (text: string) => void,
+) {
   const exit = ref<CheckExit>()
   const error = ref<apperr.Error>()
   const cancelling = ref(false)
@@ -30,6 +38,9 @@ export function useCheckRun(courseKey: string, onOutput: (text: string) => void)
   let held: CheckEvent[] = []
   let offs: (() => void)[] = []
   let disposed = false
+  // starting settles once startRun has answered, so cancel can wait for the
+  // run id.
+  let starting: Promise<void> = Promise.resolve()
 
   function handle(e: CheckEvent) {
     if (runId === undefined) {
@@ -43,12 +54,20 @@ export function useCheckRun(courseKey: string, onOutput: (text: string) => void)
     }
   }
 
-  async function start() {
+  function start(): Promise<void> {
+    starting = doStart()
+    return starting
+  }
+
+  async function doStart() {
+    if (disposed) {
+      return
+    }
     offs = [
       EventsOn('check:output', (output: CheckOutput) => handle({ output })),
       EventsOn('check:exit', (e: CheckExit) => handle({ exit: e })),
     ]
-    const res = await StartCheck(courseKey)
+    const res = await startRun()
     if (res.error) {
       error.value = res.error
       dispose()
@@ -56,7 +75,7 @@ export function useCheckRun(courseKey: string, onOutput: (text: string) => void)
     }
     runId = res.runId
     if (disposed) {
-      void CancelCheck(courseKey)
+      void cancelRun(runId)
       return
     }
     const events = held
@@ -64,11 +83,15 @@ export function useCheckRun(courseKey: string, onOutput: (text: string) => void)
     events.forEach(handle)
   }
 
-  // cancel stops the check and reports whether it stopped; CancelCheck
-  // returns after the run has ended.
+  // cancel stops the script and reports whether it stopped. Pressed before
+  // startRun has answered, it waits for the run id.
   async function cancel(): Promise<boolean> {
     cancelling.value = true
-    const res = await CancelCheck(courseKey)
+    await starting
+    if (runId === undefined) {
+      return true
+    }
+    const res = await cancelRun(runId)
     if (res.error) {
       error.value = res.error
       return false
@@ -76,14 +99,14 @@ export function useCheckRun(courseKey: string, onOutput: (text: string) => void)
     return true
   }
 
-  // dispose drops the event subscriptions and stops a check that is still
-  // running, so leaving the view never leaves a check nobody can cancel.
+  // dispose drops the event subscriptions and stops a script that is still
+  // running, so leaving the view never leaves a script nobody can cancel.
   function dispose() {
     disposed = true
     offs.forEach((off) => off())
     offs = []
     if (runId !== undefined && running.value && !cancelling.value) {
-      void CancelCheck(courseKey)
+      void cancelRun(runId)
     }
   }
 

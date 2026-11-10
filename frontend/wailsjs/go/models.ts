@@ -55,6 +55,54 @@ export namespace apperr {
 
 export namespace library {
 	
+	export class ActivityControl {
+	    label: string;
+	    group: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ActivityControl(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.label = source["label"];
+	        this.group = source["group"];
+	    }
+	}
+	export class WorkshopActivity {
+	    solution?: string;
+	    hasCheck: boolean;
+	    controls: ActivityControl[];
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkshopActivity(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.solution = source["solution"];
+	        this.hasCheck = source["hasCheck"];
+	        this.controls = this.convertValues(source["controls"], ActivityControl);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class TheoryBlock {
 	    kind: string;
 	    content: string;
@@ -75,6 +123,7 @@ export namespace library {
 	    dir: string;
 	    type: string;
 	    theoryBlocks: TheoryBlock[];
+	    workshop?: WorkshopActivity;
 	    last: boolean;
 	    courseCompleted: boolean;
 	    error?: apperr.Error;
@@ -90,6 +139,7 @@ export namespace library {
 	        this.dir = source["dir"];
 	        this.type = source["type"];
 	        this.theoryBlocks = this.convertValues(source["theoryBlocks"], TheoryBlock);
+	        this.workshop = this.convertValues(source["workshop"], WorkshopActivity);
 	        this.last = source["last"];
 	        this.courseCompleted = source["courseCompleted"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
@@ -113,11 +163,13 @@ export namespace library {
 		    return a;
 		}
 	}
+	
 	export class Course {
 	    origin: string;
 	    source: string;
 	    key: string;
 	    title: string;
+	    type?: string;
 	    checkHash?: string;
 	    enrolled: boolean;
 	    completed: boolean;
@@ -132,6 +184,7 @@ export namespace library {
 	        this.source = source["source"];
 	        this.key = source["key"];
 	        this.title = source["title"];
+	        this.type = source["type"];
 	        this.checkHash = source["checkHash"];
 	        this.enrolled = source["enrolled"];
 	        this.completed = source["completed"];
@@ -142,6 +195,7 @@ export namespace library {
 	    source: string;
 	    key: string;
 	    title: string;
+	    type?: string;
 	    checkHash?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -154,6 +208,7 @@ export namespace library {
 	        this.source = source["source"];
 	        this.key = source["key"];
 	        this.title = source["title"];
+	        this.type = source["type"];
 	        this.checkHash = source["checkHash"];
 	    }
 	}
@@ -162,11 +217,13 @@ export namespace library {
 	    source: string;
 	    key: string;
 	    title: string;
+	    type?: string;
 	    checkHash?: string;
 	    enrolled: boolean;
 	    completed: boolean;
 	    text: manifest.OverviewText;
 	    check: string;
+	    controls?: string[];
 	    error?: apperr.Error;
 	
 	    static createFrom(source: any = {}) {
@@ -179,11 +236,13 @@ export namespace library {
 	        this.source = source["source"];
 	        this.key = source["key"];
 	        this.title = source["title"];
+	        this.type = source["type"];
 	        this.checkHash = source["checkHash"];
 	        this.enrolled = source["enrolled"];
 	        this.completed = source["completed"];
 	        this.text = this.convertValues(source["text"], manifest.OverviewText);
 	        this.check = source["check"];
+	        this.controls = source["controls"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	
@@ -260,6 +319,8 @@ export namespace library {
 	}
 	export class Tree {
 	    title: string;
+	    type: string;
+	    workshopFolder?: string;
 	    current: string;
 	    completed: boolean;
 	    sections: TreeSection[];
@@ -271,6 +332,8 @@ export namespace library {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
+	        this.type = source["type"];
+	        this.workshopFolder = source["workshopFolder"];
 	        this.current = source["current"];
 	        this.completed = source["completed"];
 	        this.sections = this.convertValues(source["sections"], TreeSection);
@@ -294,6 +357,7 @@ export namespace library {
 		    return a;
 		}
 	}
+	
 	
 
 }

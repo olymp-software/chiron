@@ -20,10 +20,22 @@ export function EnterCourse(arg1:string):Promise<main.EnterResult>;
 
 export function ListCourses():Promise<main.CoursesResult>;
 
+export function OpenFolder(arg1:string):Promise<main.ErrorResult>;
+
 export function PickFolder(arg1:string):Promise<string>;
+
+export function StartActivityCheck(arg1:string,arg2:string):Promise<main.StartCheckResult>;
 
 export function StartCheck(arg1:string):Promise<main.StartCheckResult>;
 
+export function StartControl(arg1:string,arg2:string,arg3:number):Promise<main.StartCheckResult>;
+
 export function StartCourse():Promise<string>;
+
+export function StartWorkshopControl(arg1:string,arg2:number):Promise<main.StartCheckResult>;
+
+export function StopActivityRuns(arg1:string):Promise<main.ErrorResult>;
+
+export function StopRun(arg1:number):Promise<main.ErrorResult>;
 
 export function SyncCourse(arg1:string):Promise<main.CourseResult>;

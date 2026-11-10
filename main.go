@@ -36,7 +36,12 @@ func main() {
 
 	log.Info("starting")
 
-	lib, err := library.Open(dataDir, log)
+	learnerRoot, err := platform.LearnerRoot()
+	if err != nil {
+		log.Error("find learner folder root", "err", err)
+		os.Exit(1)
+	}
+	lib, err := library.Open(dataDir, learnerRoot, log)
 	if err != nil {
 		log.Error("open library", "err", err)
 		os.Exit(1)
@@ -55,6 +60,12 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		Logger:           wailsLogger{log: log},
 		OnStartup:        app.startup,
+		// A second instance would repair the library and delete TEMP_DIRs
+		// under the running one; it brings the first window forward instead.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "6f0c2b7e-4d1a-4c8e-9b35-a1e7d3f9c240",
+			OnSecondInstanceLaunch: app.secondInstance,
+		},
 		// Scripts still running when the app closes are killed.
 		OnShutdown: func(context.Context) { lib.StopAll() },
 		Bind: []any{

@@ -2,16 +2,17 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import ErrorView from '../errors/ErrorView.vue'
 import OutputPanel from '../scripts/OutputPanel.vue'
-import { useCheckRun } from './checkRun'
+import { type CancelRun, type StartRun, useCheckRun } from './checkRun'
 
-const props = defineProps<{ courseKey: string }>()
+const props = defineProps<{ title: string; start: StartRun; cancel: CancelRun }>()
 const emit = defineEmits<{ closed: [] }>()
 
 const dialog = ref<HTMLDialogElement>()
 const panel = ref<InstanceType<typeof OutputPanel>>()
 
 const { exit, error, cancelling, running, start, cancel, dispose } = useCheckRun(
-  props.courseKey,
+  props.start,
+  props.cancel,
   (text) => panel.value?.append(text),
 )
 
@@ -36,7 +37,7 @@ onUnmounted(dispose)
 
 <template>
   <dialog ref="dialog" @cancel.prevent>
-    <h2>{{ $t('check.title') }}</h2>
+    <h2>{{ title }}</h2>
     <OutputPanel ref="panel" />
     <ErrorView v-if="error" :error="error" />
     <div class="actions">

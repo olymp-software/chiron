@@ -1,5 +1,6 @@
-// Package manifest reads course.yaml. Every problem it finds is reported as an
-// apperr code with the YAML path of the offending value.
+// Package manifest reads course.yaml, workshop.yaml and activity.yaml. Every
+// problem it finds is reported as an apperr code with the YAML path of the
+// offending value.
 package manifest
 
 import (
@@ -26,17 +27,32 @@ import (
 // CourseFile is the name of the course manifest in the course root.
 const CourseFile = "course.yaml"
 
-// courseSchemaVersion is the highest course.yaml schema version the app
-// understands.
-const courseSchemaVersion = 1
+// WorkshopFile is the name of the workshop manifest in the workshop root.
+const WorkshopFile = "workshop.yaml"
 
-// Course is a valid course.yaml.
+// Content types, defined by the manifest file in the root.
+const (
+	ContentCourse   = "course"
+	ContentWorkshop = "workshop"
+)
+
+// Highest schema versions the app understands; they are independent.
+const (
+	courseSchemaVersion   = 1
+	workshopSchemaVersion = 1
+)
+
+// Course is a valid course.yaml or workshop.yaml.
 type Course struct {
+	// Type is the content type, ContentCourse or ContentWorkshop.
+	Type        string    `yaml:"-"`
 	Version     int       `yaml:"version"`
 	Title       string    `yaml:"title"`
 	Description string    `yaml:"description"`
 	Check       string    `yaml:"check"`
 	Sections    []Section `yaml:"sections"`
+	// Controls run from the course overview; only workshop.yaml has them.
+	Controls []Control `yaml:"controls"`
 }
 
 // Section is a section of the course manifest.
@@ -53,39 +69,67 @@ type ActivityRef struct {
 	Title string `yaml:"title"`
 }
 
-// ParseCourse reads and validates course.yaml in the course root. Errors are
-// *apperr.Error.
-func ParseCourse(root string) (*Course, error) {
-	data, err := os.ReadFile(filepath.Join(root, CourseFile))
-	if errors.Is(err, fs.ErrNotExist) {
+// Parse reads and validates the manifest in the root; which file is present
+// defines the content type. Errors are *apperr.Error.
+func Parse(root string) (*Course, error) {
+	course, err := readManifest(root, CourseFile)
+	if err != nil {
+		return nil, err
+	}
+	workshop, err := readManifest(root, WorkshopFile)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case course != nil && workshop != nil:
+		return nil, apperr.New(apperr.ManifestConflict)
+	case course != nil:
+		return parseManifest(root, course, CourseFile, ContentCourse, courseSchemaVersion, courseSchema)
+	case workshop != nil:
+		return parseManifest(root, workshop, WorkshopFile, ContentWorkshop, workshopSchemaVersion, workshopSchema)
+	default:
 		return nil, apperr.New(apperr.ManifestMissing)
 	}
-	if err != nil {
-		return nil, apperr.New(apperr.CourseReadFailed, "path", CourseFile)
-	}
+}
 
+// readManifest returns the content of a manifest in the root, nil if there is
+// no such file.
+func readManifest(root, file string) ([]byte, error) {
+	data, err := os.ReadFile(filepath.Join(root, file))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, apperr.New(apperr.CourseReadFailed, "path", file)
+	}
+	return data, nil
+}
+
+func parseManifest(root string, data []byte, file, contentType string, version int,
+	schema func() (*jsonschema.Schema, error)) (*Course, error) {
 	var doc any
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, yamlSyntaxError(CourseFile, err)
+		return nil, yamlSyntaxError(file, err)
 	}
 	if m, ok := doc.(map[string]any); ok {
-		if v, ok := m["version"].(int); ok && v > courseSchemaVersion {
-			return nil, unsupportedVersion(CourseFile, v)
+		if v, ok := m["version"].(int); ok && v > version {
+			return nil, unsupportedVersion(file, v)
 		}
 	}
 
-	if problems, err := validateSchema(courseSchema, doc); err != nil {
+	if problems, err := validateSchema(schema, doc); err != nil {
 		return nil, err
 	} else if len(problems) > 0 {
-		return nil, invalid(CourseFile, problems)
+		return nil, invalid(file, problems)
 	}
 
 	var c Course
 	if err := yaml.Unmarshal(data, &c); err != nil {
-		return nil, yamlSyntaxError(CourseFile, err)
+		return nil, yamlSyntaxError(file, err)
 	}
+	c.Type = contentType
 	if problems := c.check(root); len(problems) > 0 {
-		return nil, invalid(CourseFile, problems)
+		return nil, invalid(file, problems)
 	}
 	return &c, nil
 }

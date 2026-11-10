@@ -22,6 +22,8 @@ const (
 	formatVersion = 1
 	coursesDir    = "courses"
 	stateDir      = "state"
+	// tempDir holds the TEMP_DIR of every run: <tempDir>/<storage key>/<run>.
+	tempDir = "temp"
 )
 
 // Origin tells where a course comes from.
@@ -33,13 +35,16 @@ const (
 	OriginRepo  Origin = "repo"
 )
 
-// Entry is one added course. CheckHash is the SHA-256 (lowercase hex) of the
-// check file the environment check last succeeded for, "" if none.
+// Entry is one added course. Type is its content type from the manifest, ""
+// in entries added before workshops, which are courses. CheckHash is the
+// SHA-256 (lowercase hex) of the check file the environment check last
+// succeeded for, "" if none.
 type Entry struct {
 	Origin    Origin `json:"origin"`
 	Source    string `json:"source"`
 	Key       string `json:"key"`
 	Title     string `json:"title"`
+	Type      string `json:"type,omitempty"`
 	CheckHash string `json:"checkHash,omitempty"`
 }
 
@@ -60,9 +65,11 @@ type libraryFile struct {
 // Library is the learner's library in a data folder. Its methods are safe for
 // concurrent use; errors are *apperr.Error.
 type Library struct {
-	dataDir  string
-	log      *slog.Logger
-	progress *progress.Store
+	dataDir string
+	// learnerRoot is the root of the workshop folders.
+	learnerRoot string
+	log         *slog.Logger
+	progress    *progress.Store
 
 	// mu serializes reads and writes of library.json.
 	mu sync.Mutex
@@ -72,12 +79,14 @@ type Library struct {
 	// checksMu guards checks, the running environment checks by storage key.
 	checksMu sync.Mutex
 	checks   map[string]*check
+
+	runs Runs
 }
 
-// Open opens the library in dataDir and repairs course copies left by an
-// interrupted add or Sync.
-func Open(dataDir string, log *slog.Logger) (*Library, error) {
-	l := &Library{dataDir: dataDir, log: log, checks: map[string]*check{}}
+// Open opens the library in dataDir, with workshop folders under learnerRoot.
+// Recover must run before the library is used.
+func Open(dataDir, learnerRoot string, log *slog.Logger) (*Library, error) {
+	l := &Library{dataDir: dataDir, learnerRoot: learnerRoot, log: log, checks: map[string]*check{}}
 	if err := os.MkdirAll(l.coursesPath(), 0o755); err != nil {
 		log.Error("create courses folder", "err", err)
 		return nil, apperr.New(apperr.LibraryWriteFailed)
@@ -87,9 +96,6 @@ func Open(dataDir string, log *slog.Logger) (*Library, error) {
 		return nil, err
 	}
 	l.progress = p
-	if err := l.recover(); err != nil {
-		return nil, err
-	}
 	return l, nil
 }
 

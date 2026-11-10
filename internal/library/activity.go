@@ -17,12 +17,15 @@ type Activity struct {
 	Title string `json:"title"`
 	// Dir is the activity folder relative to the course root:
 	// <section>/<slug>.
-	Dir             string        `json:"dir"`
-	Type            string        `json:"type"`
-	TheoryBlocks    []TheoryBlock `json:"theoryBlocks"`
-	Last            bool          `json:"last"`
-	CourseCompleted bool          `json:"courseCompleted"`
-	Error           *apperr.Error `json:"error,omitempty"`
+	Dir string `json:"dir"`
+	// Type is the activity type, empty in a workshop.
+	Type         string        `json:"type"`
+	TheoryBlocks []TheoryBlock `json:"theoryBlocks"`
+	// Workshop is set for an activity of a workshop that is not broken.
+	Workshop        *WorkshopActivity `json:"workshop,omitempty"`
+	Last            bool              `json:"last"`
+	CourseCompleted bool              `json:"courseCompleted"`
+	Error           *apperr.Error     `json:"error,omitempty"`
 }
 
 // TheoryBlock is a theory block of an activity; markdown is the only kind.
@@ -44,29 +47,31 @@ func (l *Library) Activity(key, slug string) (Activity, error) {
 	unlock := l.lockCourse(e.Key)
 	defer unlock()
 	root := l.CopyPath(e.Key)
-	c, err := manifest.ParseCourse(root)
+	c, err := manifest.Parse(root)
 	if err != nil {
 		return Activity{}, err
 	}
-	p, err := l.progress.Load(e.Key)
+	section, title, last, completed, err := l.availableActivity(e.Key, c, slug)
 	if err != nil {
 		return Activity{}, err
 	}
-	slugs := order(c)
-	p = progress.Resolve(slugs, p)
-	i := slices.Index(slugs, slug)
-	if i < 0 || !available(p, slug) {
-		return Activity{}, apperr.New(apperr.ActivityUnavailable, "slug", slug)
-	}
-	section, ref := find(c, slug)
 	a := Activity{
 		Slug:            slug,
-		Title:           ref.Title,
+		Title:           title,
 		Dir:             section + "/" + slug,
-		Last:            i == len(slugs)-1,
-		CourseCompleted: p.CourseCompleted,
+		Last:            last,
+		CourseCompleted: completed,
 	}
-	parsed, err := manifest.ParseActivity(root, section, slug)
+	if c.Type == manifest.ContentWorkshop {
+		err = l.fillWorkshopActivity(e.Key, root, section, slug, &a)
+	} else {
+		var parsed *manifest.Activity
+		parsed, err = manifest.ParseActivity(root, section, slug)
+		if err == nil {
+			a.Type = parsed.Type
+			a.TheoryBlocks = theoryBlocks(parsed.TheoryBlocks)
+		}
+	}
 	if err != nil {
 		// Even an app failure stays an activity error, so Next keeps working.
 		var ae *apperr.Error
@@ -75,14 +80,34 @@ func (l *Library) Activity(key, slug string) (Activity, error) {
 			ae = apperr.New(apperr.Internal)
 		}
 		a.Error = ae
-		return a, nil
-	}
-	a.Type = parsed.Type
-	a.TheoryBlocks = make([]TheoryBlock, len(parsed.TheoryBlocks))
-	for i, b := range parsed.TheoryBlocks {
-		a.TheoryBlocks[i] = TheoryBlock{Kind: b.Kind, Content: b.Data.Content}
 	}
 	return a, nil
+}
+
+// availableActivity returns the section and title of the activity slug of c,
+// whether it is the last one and whether the course is completed. A locked
+// activity or one not in the manifest is activityUnavailable.
+func (l *Library) availableActivity(key string, c *manifest.Course, slug string) (section, title string, last, completed bool, err error) {
+	p, err := l.progress.Load(key)
+	if err != nil {
+		return "", "", false, false, err
+	}
+	slugs := order(c)
+	p = progress.Resolve(slugs, p)
+	i := slices.Index(slugs, slug)
+	if i < 0 || !available(p, slug) {
+		return "", "", false, false, apperr.New(apperr.ActivityUnavailable, "slug", slug)
+	}
+	section, ref := find(c, slug)
+	return section, ref.Title, i == len(slugs)-1, p.CourseCompleted, nil
+}
+
+func theoryBlocks(blocks []manifest.TheoryBlock) []TheoryBlock {
+	out := make([]TheoryBlock, len(blocks))
+	for i, b := range blocks {
+		out[i] = TheoryBlock{Kind: b.Kind, Content: b.Data.Content}
+	}
+	return out
 }
 
 // CompleteActivity completes the available activity slug of the enrolled
@@ -99,7 +124,7 @@ func (l *Library) CompleteActivity(key, slug string) (string, Tree, error) {
 	// The progress must not be computed from an order Sync has just replaced.
 	unlock := l.lockCourse(e.Key)
 	defer unlock()
-	c, err := manifest.ParseCourse(l.CopyPath(e.Key))
+	c, err := manifest.Parse(l.CopyPath(e.Key))
 	if err != nil {
 		return "", Tree{}, err
 	}
@@ -128,7 +153,7 @@ func (l *Library) CompleteActivity(key, slug string) (string, Tree, error) {
 	if i < len(slugs)-1 {
 		next = slugs[i+1]
 	}
-	return next, tree(c, p), nil
+	return next, l.tree(e.Key, c, p), nil
 }
 
 // find returns the section slug and the reference of the activity slug in c.

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/olymp-software/chiron/schemas/workshop-activity/v1.json",
+  "title": "Chiron workshop activity (activity.yaml), schema version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "theory_blocks"],
+  "properties": {
+    "version": {
+      "description": "Schema version of this file.",
+      "const": 1
+    },
+    "theory_blocks": {
+      "description": "Theory blocks shown in order at the top of the activity.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/theoryBlock" }
+    },
+    "solution": {
+      "description": "Markdown shown when the learner presses Solution.",
+      "type": "string",
+      "minLength": 1
+    },
+    "check": {
+      "description": "Path from the activity folder to the script the Check button runs.",
+      "type": "string",
+      "minLength": 1
+    },
+    "controls": {
+      "description": "Buttons that run scripts from the activity folder.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/control" }
+    },
+    "files": {
+      "description": "Files and folders copied to the workshop folder without overwriting.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/fileItem" }
+    }
+  },
+  "$defs": {
+    "theoryBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "data"],
+      "properties": {
+        "kind": {
+          "description": "Block kind.",
+          "const": "markdown"
+        },
+        "data": { "$ref": "#/$defs/markdownData" }
+      }
+    },
+    "markdownData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content"],
+      "properties": {
+        "content": {
+          "description": "Markdown text.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "script"],
+      "properties": {
+        "label": {
+          "description": "Button text.",
+          "type": "string",
+          "minLength": 1
+        },
+        "script": {
+          "description": "Path from the activity folder to the script the control runs.",
+          "type": "string",
+          "minLength": 1
+        },
+        "concurrency": {
+          "description": "Exclusion group: controls with the same group never run at once.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "fileItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "description": "Path from the activity folder to a file or folder.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

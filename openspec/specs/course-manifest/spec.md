@@ -7,10 +7,10 @@ Defines the layout of a course repository, the `course.yaml` course manifest, sl
 ## Requirements
 
 ### Requirement: Repository layout
-A course repository SHALL contain `course.yaml` at its root. Each section SHALL be a folder `<section-slug>/` and each activity a folder `<section-slug>/<activity-slug>/` containing `activity.yaml`. There SHALL be no other nesting levels. The course root MAY contain the overview file `OVERVIEW.md`, matched case-insensitively, shown in the course overview. `README.md` files are allowed for GitHub and ignored by the app.
+A course repository SHALL contain `course.yaml` at its root; a workshop repository SHALL contain `workshop.yaml` there instead. Each section SHALL be a folder `<section-slug>/` and each activity a folder `<section-slug>/<activity-slug>/` containing `activity.yaml`. There SHALL be no other nesting levels. The course root MAY contain the overview file `OVERVIEW.md`, matched case-insensitively, shown in the course overview. `README.md` files are allowed for GitHub and ignored by the app.
 
 ```
-course.yaml
+course.yaml               # or workshop.yaml
 OVERVIEW.md               # optional, shown in the course overview
 README.md                 # optional, ignored by the app
 scripts/check.sh          # optional, environment check
@@ -25,7 +25,7 @@ scripts/check.sh          # optional, environment check
 - **THEN** the app builds the course tree with section `basics` and activity `hello`
 
 #### Scenario: Missing course manifest
-- **WHEN** the repository root has no `course.yaml`
+- **WHEN** the repository root has neither `course.yaml` nor `workshop.yaml`
 - **THEN** the app shows a course error
 
 #### Scenario: README is not the overview
@@ -116,10 +116,14 @@ All text files SHALL be UTF-8. YAML SHALL be parsed strictly: an unknown field o
 - **THEN** the app treats it as course schema 1
 
 ### Requirement: Published JSON Schemas
-For every schema version a JSON Schema SHALL be published at `<schema-base>/course/v<N>.json` and `<schema-base>/activity/v<N>.json`. The app SHALL use the same schemas to validate files that authors use for editor completion.
+For every schema version a JSON Schema SHALL be published at `<schema-base>/course/v<N>.json` and `<schema-base>/course-activity/v<N>.json`, and for workshops at `<schema-base>/workshop/v<N>.json` and `<schema-base>/workshop-activity/v<N>.json`. The app SHALL use the same schemas to validate files that authors use for editor completion.
 
 #### Scenario: Editor completion
-- **WHEN** an author adds `# yaml-language-server: $schema=<schema-base>/activity/v1.json` as the first line of `activity.yaml`
+- **WHEN** an author adds `# yaml-language-server: $schema=<schema-base>/course-activity/v1.json` as the first line of `activity.yaml`
+- **THEN** a YAML-aware editor validates and autocompletes against the published schema
+
+#### Scenario: Workshop activity completion
+- **WHEN** an author adds `# yaml-language-server: $schema=<schema-base>/workshop-activity/v1.json` as the first line of `activity.yaml` of a workshop
 - **THEN** a YAML-aware editor validates and autocompletes against the published schema
 
 ### Requirement: Unsupported courses

@@ -5,6 +5,7 @@ import { CourseTree as LoadTree, ListCourses } from '../../wailsjs/go/main/App'
 import type { apperr, library } from '../../wailsjs/go/models'
 import ErrorView from '../errors/ErrorView.vue'
 import CourseTree from './CourseTree.vue'
+import WorkshopBar from './WorkshopBar.vue'
 
 const props = defineProps<{ courseKey: string }>()
 
@@ -25,8 +26,13 @@ onMounted(async () => {
   courses.value = listRes.courses ?? []
 })
 
-function switchCourse(e: Event) {
-  router.push(`/courses/${(e.target as HTMLSelectElement).value}`)
+// switchCourse opens the picked course; if the learner stays (a leave guard
+// declined), the select shows the course on the screen again.
+async function switchCourse(e: Event) {
+  const select = e.target as HTMLSelectElement
+  if (await router.push(`/courses/${select.value}`)) {
+    select.value = props.courseKey
+  }
 }
 </script>
 
@@ -46,6 +52,11 @@ function switchCourse(e: Event) {
     </header>
     <ErrorView v-if="error" :error="error" />
     <p v-else-if="!tree">{{ $t('course.loading') }}</p>
+    <WorkshopBar
+      v-if="tree?.workshopFolder"
+      :course-key="courseKey"
+      :folder="tree.workshopFolder"
+    />
     <div v-if="tree" class="body">
       <CourseTree :course-key="courseKey" :tree="tree" />
       <RouterView v-slot="{ Component }">

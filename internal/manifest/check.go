@@ -10,7 +10,7 @@ import (
 )
 
 // check returns the problems the schema cannot express: slug uniqueness and
-// the check path in the course root.
+// the check and control paths in the course root.
 func (c *Course) check(root string) []apperr.Problem {
 	var problems []apperr.Problem
 	sections := map[string]bool{}
@@ -34,18 +34,42 @@ func (c *Course) check(root string) []apperr.Problem {
 			problems = append(problems, p)
 		}
 	}
+	return append(problems, checkControls(root, c.Controls)...)
+}
+
+// checkControls returns the problems of control scripts, paths in base.
+func checkControls(base string, controls []Control) []apperr.Problem {
+	var problems []apperr.Problem
+	for i, c := range controls {
+		if p, ok := checkPath(base, fmt.Sprintf("controls[%d].script", i), c.Script, false); !ok {
+			problems = append(problems, p)
+		}
+	}
+	return problems
+}
+
+// check returns the problems the schema cannot express: paths inside the
+// activity folder dir.
+func (a *WorkshopActivity) check(dir string) []apperr.Problem {
+	var problems []apperr.Problem
+	if a.Check != "" {
+		if p, ok := checkPath(dir, "check", a.Check, false); !ok {
+			problems = append(problems, p)
+		}
+	}
+	problems = append(problems, checkControls(dir, a.Controls)...)
+	for i, f := range a.Files {
+		if p, ok := checkPath(dir, fmt.Sprintf("files[%d].path", i), f.Path, true); !ok {
+			problems = append(problems, p)
+		}
+	}
 	return problems
 }
 
 // check returns the problems the schema cannot express: paths inside the
 // activity folder dir and the number of correct options.
 func (a *Activity) check(dir string) []apperr.Problem {
-	var problems []apperr.Problem
-	for i, c := range a.Controls {
-		if p, ok := checkPath(dir, fmt.Sprintf("controls[%d].script", i), c.Script, false); !ok {
-			problems = append(problems, p)
-		}
-	}
+	problems := checkControls(dir, a.Controls)
 	if a.Coding != nil {
 		for i, w := range a.Coding.Workspace {
 			if p, ok := checkPath(dir, fmt.Sprintf("data.workspace[%d].path", i), w.Path, true); !ok {

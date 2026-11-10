@@ -77,7 +77,7 @@ Each control keeps its own `OutputPanel` while the activity is open, selected by
 
 Leaving goes through a vue-router guard on the activity route: with a run in progress it asks for confirmation, and only then calls `StopActivityRuns`. "Next" uses the same path before `CompleteActivity`. The Wails side also stops runs on app shutdown through `StopAll`.
 
-`runtime.Run` already kills what a script leaves behind when it exits, so "Processes end with their script" needs tests, not new code. `TEMP_DIR` is deleted after `Wait` returns.
+`runtime.Run` already kills what a script leaves behind when it exits, but killing does not wait for the processes to die, so "Processes end with their script" also needs `tree.close` to wait until they are gone, bounded by `closeWait`. `TEMP_DIR` is deleted after `Wait` returns.
 
 ### Workshop controls run in the check modal
 

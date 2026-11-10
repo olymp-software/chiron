@@ -29,6 +29,7 @@ context: |
   - Storage key: file-system-safe name derived from the course source (`<label>-<hash>`); names everything the app stores on disk for a course. Avoid: course id.
   - Sync: replacing a local-folder course's course copy with a fresh copy of its folder, started by the learner in the course overview. Avoid: reload, refresh.
   - Course manifest: course.yaml, the only description of sections, activities and their order. Avoid: table of contents, course config.
+  - Workshop: a content type with workshop.yaml in its root instead of course.yaml; its activities change one shared state the app does not own, such as files, a cloud account or a local cluster. Otherwise it behaves as a course. Avoid: project, lab, tutorial.
   - Section: a named group of activities; no content or logic of its own. Avoid: module, chapter.
   - Activity: a unit of progression: theory, quiz or coding. Avoid: lesson, task, exercise, step.
   - Slug: human-readable id of a section or activity, equal to its folder name; activity slugs are unique course-wide and key progress. Avoid: id, key, name.
@@ -38,7 +39,8 @@ context: |
   - Overview file: optional OVERVIEW.md in the course root, matched case-insensitively; Markdown text shown in the course overview. Avoid: readme, about.
 
   Library and enrollment
-  - Library: every course the learner has added, enrolled or not. Avoid: catalog, collection.
+  - Library item: what the library holds, a course or a workshop; the umbrella term where both are meant. Rules written for a course apply to both unless the workshop rules say otherwise. Avoid: content, material, module.
+  - Library: every library item the learner has added, enrolled or not; courses and workshops are listed in separate sections. Avoid: catalog, collection.
   - Course overview: the window opened from the library; shows the overview file or description, the version selector (or Sync for a local-folder course), the environment check and Enroll or Continue. Avoid: course page, course card.
   - Enrollment: the learner's decision to take a course from the library, made with Enroll; a course is enrolled exactly when it has progress; ends only when the course is removed. Avoid: subscription, start.
 
@@ -60,10 +62,13 @@ context: |
   - Control script: the course's shell script a control runs; knows what to put next to the code, run and check. Avoid: hook, command.
   - Exclusion group: controls of an activity of which only one may run at a time; controls without an explicit group share the activity's default group. Avoid: queue, lock.
   - Environment check: course-level script verifying the learner's machine has what the course needs; Enroll and Continue are unavailable until it succeeds for the current check file. Avoid: requirements, setup, dependency install.
+  - Activity check: a workshop activity's script run by the built-in Check button in a modal; its result is neither kept nor remembered and gates nothing. Avoid: test, validation, grading.
 
   Learner's work
   - Workspace files: files and folders of a coding activity copied to the learner; everything else stays in the course. Avoid: starter files, template, bare "workspace".
   - Learner folder: a per-activity folder outside the course where the learner works; exists for every activity type. Avoid: sandbox, working copy.
+  - Workshop folder: the one folder of a workshop outside the course copy, shared by all its activities; holds the copied files and the learner's work. Avoid: shared workspace, project folder.
+  - Solution: optional Markdown of a workshop activity, hidden until the learner presses Solution; showing it does not affect progress. Avoid: answer, hint, explanation.
   - External editor: the code editor chosen in app settings, in which the app opens the learner folder. Avoid: IDE, system editor.
   - Hidden file: an activity file that is not a workspace file; hidden only from the UI, readable on disk. Avoid: secret file, private test.
   - Reset: restoring selected workspace files in the learner folder to their course version. Avoid: rollback, restore.

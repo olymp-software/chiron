@@ -1,10 +1,10 @@
-# Spec Delta
+# workshop Specification
 
 ## Purpose
 
 Defines the workshop: a content type whose activities change one shared state, such as files in a folder, resources in a cloud account or a local cluster, which the app does not own.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Content type by root file
 A repository with `workshop.yaml` in its root SHALL be a workshop, and one with `course.yaml` SHALL be a course. A repository with both files or neither SHALL be a course error.
@@ -43,12 +43,23 @@ Except where this specification says otherwise, a workshop SHALL behave as a cou
 - **WHEN** the learner switches a workshop to another course version
 - **THEN** the workshop folder is not touched and progress is kept by activity slug
 
-### Requirement: Workshop is marked in the library
-The library entry and the course overview of a workshop SHALL show that it is a workshop. On the last activity "Finish course" SHALL read "Finish workshop".
+### Requirement: Library separates courses and workshops
+The library SHALL list courses and workshops in separate sections, titled "Courses" and "Workshops". A section with no entries SHALL NOT be shown. The course overview of a workshop SHALL show that it is a workshop. On the last activity "Finish course" SHALL read "Finish workshop".
 
-#### Scenario: Library entry
-- **WHEN** the library lists a workshop
-- **THEN** its entry is marked as a workshop
+#### Scenario: Both kinds in the library
+- **WHEN** the library holds a course and a workshop
+- **THEN** the course is listed under "Courses" and the workshop under "Workshops"
+
+#### Scenario: Only workshops
+- **WHEN** the library holds only workshops
+- **THEN** only the "Workshops" section is shown
+
+### Requirement: Adding names neither content type
+The library button that adds from a folder, the folder dialog, the empty library text and the script warning SHALL apply to both courses and workshops: the content type is known only after the folder is read.
+
+#### Scenario: Add button
+- **WHEN** the learner opens the library
+- **THEN** the button reads "Add from folder"
 
 ### Requirement: Next is unconditional
 "Next" SHALL complete an activity of a workshop whatever the outcome of its Check, as in a course. The app SHALL NOT warn about a failed or skipped Check.

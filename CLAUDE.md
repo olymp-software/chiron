@@ -24,7 +24,9 @@ Single tests: extra args pass through after `--`.
 
 Only `./internal/...` is tested; the root `main` package needs `frontend/dist` and the Wails toolchain.
 
-Test courses for manual checks in the app go to `tmp/courses/` in the repo root, never to `/tmp` or the scratchpad. Name them `NN-<name>` with the next free number (e.g. `13-theory-activities`) and add their checks to `tmp/courses/CHECKLIST.md`.
+Never change file permissions (`chmod`, `git update-index --chmod`) unless explicitly told to. Whatever modes `wails build` or `wails generate` leave are correct, even if `git diff` shows a mode change.
+
+Test courses for manual checks in the app go to `tmp/courses/` in the repo root, never to `/tmp` or the scratchpad. Name them `NN-<name>` with the next free number (e.g. `13-theory-activities`) and add their checks to `tmp/courses/CHECKLIST.md`. Test workshops follow the same rules in `tmp/workshops/`, with `tmp/workshops/CHECKLIST.md`.
 
 ## Architecture
 
@@ -34,15 +36,15 @@ Test courses for manual checks in the app go to `tmp/courses/` in the repo root,
 
 `internal/` packages:
 - `apperr` — every learner-facing error is a `Code` (plus params and per-field `Problems`); Go never produces user-facing text. Adding a code: add the constant **and** list it in `All`, run `go generate ./internal/apperr` (writes `frontend/src/errors/codes.ts`), and add `errors.<code>` messages to both `frontend/src/i18n/en.json` and `ru.json`. Tests on both sides fail if any of these drift.
-- `library` — `library.json` (versioned format, atomic writes) plus app-owned course copies under `<data>/courses/<key>`; add/Sync of local-folder courses, course overview; `Open` repairs copies left by an interrupted add/Sync. Global mutex for `library.json`, per-storage-key locks for copies.
+- `library` — `library.json` (versioned format, atomic writes) plus app-owned course copies under `<data>/courses/<key>`; add/Sync of local-folder courses, course overview; `Recover`, called from `App.startup`, repairs copies left by an interrupted add/Sync and deletes leftover `TEMP_DIR`s (a second app instance quits on Wails' `SingleInstanceLock` before startup, so it never does this under a running one). Global mutex for `library.json`, per-storage-key locks for copies. `Runs` holds running controls, activity Checks and workshop controls with their exclusion, stopped by leaving the activity, Sync and `StopAll`; the environment check stays separate because it remembers its result. A workshop has one workshop folder at `<learner root>/<key>`; `files` are copied there on activity open, and each run gets a `TEMP_DIR` under `<data>/temp`.
 - `source` — normalizing course sources, deriving storage keys (`<label>-<hash>`), copying folders.
-- `manifest` — parses and validates `course.yaml` against the JSON Schema in `schemas/course/v1.json` (embedded via `schemas/`, also published for authors), then semantic checks; problems carry YAML paths.
-- `runtime` — runs control scripts with the embedded `mvdan.cc/sh` interpreter (no system shell) plus built-in utilities.
+- `manifest` — `Parse` detects `course.yaml` or `workshop.yaml` and sets the content type on `Course`; files are validated against the JSON Schemas in `schemas/` (`course`, `course-activity`, `workshop`, `workshop-activity`; embedded, also published for authors), then semantic checks; problems carry YAML paths. `activity.yaml` is read by `ParseActivity` or `ParseWorkshopActivity`, chosen by the content type.
+- `runtime` — runs control scripts with the embedded `mvdan.cc/sh` interpreter (no system shell) plus built-in utilities. A run ends only after every process it started is gone.
 - `platform` — per-OS data/log dirs, atomic file writes, log setup.
 
 OS-specific code uses `_windows.go` / `_other.go` / `_unix.go` / `_darwin.go` / `_linux.go` suffixes; such files are linted only on their own OS, so check both `task go:lint` (Windows) and `task go:lint:internal` (host).
 
-Frontend (`frontend/src`): no router — `App.vue` switches between `library/LibraryView` and `overview/CourseOverview`. UI strings go through vue-i18n (`en`, `ru`). `markdown/` renders course Markdown (markdown-it + shiki, custom dialect, link and image rewriting to `/course-files/`).
+Frontend (`frontend/src`): `router.ts` (vue-router) switches between `library/LibraryView`, `overview/CourseOverview` and `course/CourseScreen`. Workshop parts of an activity live in `course/WorkshopActivity`; `ActivityView` asks before leaving while a control runs, through route guards. `overview/CheckModal` and `checkRun` run any script given start and cancel functions. UI strings go through vue-i18n (`en`, `ru`). `markdown/` renders course Markdown (markdown-it + shiki, custom dialect, link and image rewriting to `/course-files/`).
 
 ## OpenSpec workflow
 
