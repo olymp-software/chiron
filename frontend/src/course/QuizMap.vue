@@ -13,9 +13,16 @@ const correct = computed(() => props.results.filter((r) => r === 'correct').leng
 
 const icons: Record<Result, string> = { unchecked: '', correct: '✔', incorrect: '✘' }
 
+// labels are the screen-reader texts of the map, apart from the verdict
+// shown under a checked question.
+const labels: Record<Result, string> = {
+  unchecked: 'quiz.mapUnchecked',
+  correct: 'quiz.mapCorrect',
+  incorrect: 'quiz.mapIncorrect',
+}
+
 function label(i: number): string {
-  const r = props.results[i]
-  return t('quiz.mapItem', { n: i + 1, result: t(`quiz.${r}`) })
+  return t(labels[props.results[i]], { n: i + 1 })
 }
 </script>
 

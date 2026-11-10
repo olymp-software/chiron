@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useId } from 'vue'
+import { nextTick, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { library } from '../../wailsjs/go/models'
 import type { ImageResolver } from '../markdown/images'
@@ -18,8 +18,32 @@ const emit = defineEmits<{ select: [selected: number[]]; check: [] }>()
 
 const { t } = useI18n()
 
-// name groups the radio buttons of this question.
+// name groups the radio buttons of this question and prefixes its ids.
 const name = useId()
+
+const result = ref<HTMLElement>()
+
+// Check disappears once pressed, so focus moves to the result instead of
+// falling back to the page. Opening an already checked question moves nothing.
+watch(
+  () => props.answer.checked,
+  async (checked, was) => {
+    if (checked && !was) {
+      await nextTick()
+      result.value?.focus()
+    }
+  },
+)
+
+// onTextClick selects an option by its text, like a label would, but leaves
+// links, code and text selection alone: the text is Markdown, not a label.
+function onTextClick(e: MouseEvent, i: number) {
+  const target = e.target as Element | null
+  if (target?.closest('a, pre, code, img, input') || window.getSelection()?.toString()) {
+    return
+  }
+  toggle(i)
+}
 
 function selected(i: number): boolean {
   return props.answer.selected.includes(i)
@@ -79,20 +103,27 @@ function optionStatus(i: number): string {
         class="option"
         :class="{ right: rightOption(i) }"
       >
-        <label>
+        <div class="row">
           <input
             :type="question.multiple ? 'checkbox' : 'radio'"
             :name="name"
             :checked="selected(i)"
             :disabled="answer.checked"
+            :aria-labelledby="`${name}-text-${i} ${name}-status-${i}`"
             @change="toggle(i)"
           />
-          <MarkdownView class="text" :source="o.text" :resolve-image="resolveImage" />
+          <MarkdownView
+            :id="`${name}-text-${i}`"
+            class="text"
+            :source="o.text"
+            :resolve-image="resolveImage"
+            @click="onTextClick($event, i)"
+          />
           <span v-if="verdict(i)" class="verdict" :class="verdict(i)" aria-hidden="true">
             {{ verdict(i) === 'correct' ? '✔' : '✘' }}
           </span>
-          <span v-if="optionStatus(i)" class="hidden">{{ optionStatus(i) }}</span>
-        </label>
+          <span :id="`${name}-status-${i}`" class="hidden">{{ optionStatus(i) }}</span>
+        </div>
         <MarkdownView
           v-if="answer.checked && selected(i) && o.feedback"
           class="feedback"
@@ -104,17 +135,24 @@ function optionStatus(i: number): string {
     <button v-if="!answer.checked" :disabled="!answer.selected.length" @click="emit('check')">
       {{ $t('quiz.check') }}
     </button>
-    <template v-else>
-      <p class="result" :class="answer.correct ? 'correct' : 'incorrect'" role="status">
+    <!-- The live region exists before its text, so screen readers announce it. -->
+    <p
+      ref="result"
+      class="result"
+      :class="answer.checked && (answer.correct ? 'correct' : 'incorrect')"
+      role="status"
+      tabindex="-1"
+    >
+      <template v-if="answer.checked">
         {{ $t(answer.correct ? 'quiz.correct' : 'quiz.incorrect') }}
-      </p>
-      <MarkdownView
-        v-if="question.explanation"
-        class="explanation"
-        :source="question.explanation"
-        :resolve-image="resolveImage"
-      />
-    </template>
+      </template>
+    </p>
+    <MarkdownView
+      v-if="answer.checked && question.explanation"
+      class="explanation"
+      :source="question.explanation"
+      :resolve-image="resolveImage"
+    />
   </section>
 </template>
 
@@ -153,10 +191,14 @@ function optionStatus(i: number): string {
   background: color-mix(in srgb, #26a269 20%, transparent);
 }
 
-.option label {
+.row {
   display: flex;
   gap: 0.5rem;
   align-items: baseline;
+}
+
+.text {
+  cursor: default;
 }
 
 .text :deep(p) {

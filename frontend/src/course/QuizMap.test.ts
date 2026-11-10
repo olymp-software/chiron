@@ -16,8 +16,8 @@ describe('QuizMap', () => {
     const w = mountMap(['correct', 'incorrect', 'unchecked', 'unchecked'])
 
     expect(w.findAll('nav button').map((b) => b.attributes('aria-label'))).toEqual([
-      'Question 1: Correct',
-      'Question 2: Incorrect',
+      'Question 1: answered correctly',
+      'Question 2: answered incorrectly',
       'Question 3: not answered',
       'Question 4: not answered',
     ])

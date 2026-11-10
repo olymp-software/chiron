@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import { library } from '../../wailsjs/go/models'
 import en from '../i18n/en.json'
 import type { Answer } from '../quiz/quiz'
 import QuizQuestion from './QuizQuestion.vue'
+
+vi.mock('../../wailsjs/runtime/runtime', () => ({ BrowserOpenURL: vi.fn() }))
 
 function question(fields: Partial<library.Question> = {}): library.Question {
   return library.Question.createFrom({
@@ -26,9 +28,10 @@ function answer(fields: Partial<Answer> = {}): Answer {
   return { selected: [], checked: false, correct: false, ...fields }
 }
 
-async function mountQuestion(q = question(), a = answer()) {
+async function mountQuestion(q = question(), a = answer(), attachTo?: HTMLElement) {
   const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } })
   const w = mount(QuizQuestion, {
+    attachTo,
     props: { question: q, answer: a, n: 2, total: 5, resolveImage: () => null },
     global: { plugins: [i18n] },
   })
@@ -73,6 +76,52 @@ describe('QuizQuestion', () => {
     await w.findAll('input')[2].trigger('change')
 
     expect(w.emitted('select')).toEqual([[[0, 2]], [[]]])
+  })
+
+  it('selects an option by its text but not by its links or code', async () => {
+    const q = question({
+      options: [
+        { text: 'Plain', correct: true, feedback: '' },
+        { text: 'See [docs](https://example.com) and `code`', correct: false, feedback: '' },
+      ],
+    })
+    const w = await mountQuestion(q)
+    const texts = w.findAll('.option .text')
+
+    await texts[0].get('p').trigger('click')
+    await texts[1].get('a').trigger('click')
+    await texts[1].get('code').trigger('click')
+
+    expect(w.emitted('select')).toEqual([[[0]]])
+  })
+
+  it('names each input by its option text and status', async () => {
+    const w = await mountQuestion(question(), answer({ selected: [1], checked: true }))
+    const input = w.findAll('input')[1]
+
+    const names = input
+      .attributes('aria-labelledby')!
+      .split(' ')
+      .map((id) => w.get(`[id="${id}"]`).text())
+
+    expect(names).toEqual(['B', 'Your choice, incorrect'])
+  })
+
+  it('moves focus to the result after checking', async () => {
+    const w = await mountQuestion(question(), answer({ selected: [0] }), document.body)
+
+    await w.setProps({ answer: answer({ selected: [0], checked: true, correct: true }) })
+    await flushPromises()
+
+    expect(document.activeElement).toBe(w.get('.result').element)
+    expect(w.get('.result').attributes('role')).toBe('status')
+    w.unmount()
+  })
+
+  it('keeps the result region empty until checking', async () => {
+    const w = await mountQuestion(question(), answer({ selected: [0] }))
+
+    expect(w.get('.result[role=status]').text()).toBe('')
   })
 
   it('disables Check without a selection', async () => {
@@ -160,7 +209,7 @@ describe('QuizQuestion', () => {
 
     expect(w.find('.feedback').exists()).toBe(false)
     expect(w.find('.explanation').exists()).toBe(false)
-    expect(w.find('.result').exists()).toBe(false)
+    expect(w.get('.result').text()).toBe('')
   })
 
   it('shows Correct for a correct answer', async () => {

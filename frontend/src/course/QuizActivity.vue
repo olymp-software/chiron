@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { library } from '../../wailsjs/go/models'
 import type { ImageResolver } from '../markdown/images'
 import MarkdownView from '../markdown/MarkdownView.vue'
@@ -22,6 +22,17 @@ const answers = ref<Answer[]>(freshAnswers(props.quiz))
 
 const questions = computed(() => props.quiz.questions)
 const results = computed(() => answers.value.map(result))
+
+// shown is the element of the screen on display.
+const shown = ref<HTMLElement>()
+
+// A new screen starts at its top with focus on it: the button that switched
+// screens is gone, and the old scroll offset belongs to the other screen.
+watch(screen, async () => {
+  await nextTick()
+  shown.value?.scrollIntoView?.({ block: 'start' })
+  shown.value?.focus({ preventScroll: true })
+})
 
 function showQuiz() {
   started.value = true
@@ -51,7 +62,7 @@ function startOver() {
 </script>
 
 <template>
-  <div v-if="screen === 'theory'" class="theory">
+  <div v-if="screen === 'theory'" ref="shown" class="theory" tabindex="-1">
     <template v-for="(b, i) in theoryBlocks" :key="i">
       <MarkdownView
         v-if="b.kind === 'markdown'"
@@ -63,7 +74,7 @@ function startOver() {
       {{ $t(started ? 'quiz.back' : 'quiz.start') }}
     </button>
   </div>
-  <div v-else class="quiz">
+  <div v-else ref="shown" class="quiz" tabindex="-1">
     <div class="bar">
       <QuizMap :results="results" :open="open" @open="(i: number) => (open = i)" />
       <div class="actions">
@@ -97,6 +108,12 @@ function startOver() {
 .quiz {
   display: grid;
   gap: 1rem;
+  scroll-margin-top: 1rem;
+}
+
+.theory:focus,
+.quiz:focus {
+  outline: none;
 }
 
 .theory .start {

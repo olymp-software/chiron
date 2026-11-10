@@ -270,7 +270,7 @@ describe('ActivityView', () => {
 
     expect(w.get('.theory .start').text()).toBe('Start quiz')
     await w.get('.theory .start').trigger('click')
-    expect(w.find('.result').exists()).toBe(false)
+    expect(w.get('.result').text()).toBe('')
     expect(w.get('.counter').text()).toBe('Correct: 0 of 1')
   })
 

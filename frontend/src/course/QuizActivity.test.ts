@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import { library } from '../../wailsjs/go/models'
 import en from '../i18n/en.json'
@@ -22,9 +22,10 @@ function quiz(): library.Quiz {
   })
 }
 
-async function mountQuiz() {
+async function mountQuiz(attachTo?: HTMLElement) {
   const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } })
   const w = mount(QuizActivity, {
+    attachTo,
     props: {
       theoryBlocks: [library.TheoryBlock.createFrom({ kind: 'markdown', content: '# Intro' })],
       quiz: quiz(),
@@ -118,13 +119,33 @@ describe('QuizActivity', () => {
     expect(openQuestion(w)).toBe('Question 2 of 3')
     expect((w.findAll('.question input')[0].element as HTMLInputElement).checked).toBe(true)
     expect(mapLabels(w)).toEqual([
-      'Question 1: Incorrect',
+      'Question 1: answered incorrectly',
       'Question 2: not answered',
       'Question 3: not answered',
     ])
     expect(w.get('.counter').text()).toBe('Correct: 0 of 3')
     await w.get('.previous').trigger('click')
     expect(w.get('.result').text()).toBe('Incorrect')
+  })
+
+  it('moves focus to the screen it switches to', async () => {
+    // jsdom has no scrollIntoView.
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+    })
+    const w = await mountQuiz(document.body)
+
+    await w.get('.theory .start').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(w.get('.quiz').element)
+    await w.get('.to-theory').trigger('click')
+    await flushPromises()
+
+    expect(document.activeElement).toBe(w.get('.theory').element)
+    expect(scroll).toHaveBeenCalledTimes(2)
+    w.unmount()
   })
 
   it('Start over clears every answer and opens the first question', async () => {
@@ -139,7 +160,7 @@ describe('QuizActivity', () => {
     await w.get('.start-over').trigger('click')
 
     expect(openQuestion(w)).toBe('Question 1 of 3')
-    expect(w.find('.result').exists()).toBe(false)
+    expect(w.get('.result').text()).toBe('')
     expect(w.findAll('.question input').some((i) => (i.element as HTMLInputElement).checked)).toBe(
       false,
     )

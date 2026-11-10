@@ -154,10 +154,10 @@ async function complete() {
       :resolve-image="resolveImage"
       @running="(r: boolean) => (running = r)"
     />
-    <!-- Every load unmounts the view first, so an opened quiz starts fresh. -->
+    <!-- Every load clears activity first, which unmounts the quiz: an opened
+         quiz always starts fresh. -->
     <QuizActivity
       v-else-if="activity.quiz"
-      :key="activity.slug"
       :theory-blocks="activity.theoryBlocks"
       :quiz="activity.quiz"
       :resolve-image="resolveImage"

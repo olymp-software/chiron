@@ -89,8 +89,9 @@
     "theory": "Theory",
     "startOver": "Start over",
     "map": "Questions",
-    "mapItem": "Question {n}: {result}",
-    "unchecked": "not answered",
+    "mapUnchecked": "Question {n}: not answered",
+    "mapCorrect": "Question {n}: answered correctly",
+    "mapIncorrect": "Question {n}: answered incorrectly",
     "counter": "Correct: {correct} of {total}",
     "position": "Question {n} of {total}",
     "check": "Check",
@@ -99,7 +100,7 @@
     "chosenCorrect": "Your choice, correct",
     "chosenIncorrect": "Your choice, incorrect",
     "missed": "Correct option, not selected",
-    "previous": "Previous",
+    "previous": "Previous question",
     "nextQuestion": "Next question"
   },
   "errors": {
