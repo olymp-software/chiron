@@ -67,6 +67,52 @@ func TestActivityTheory(t *testing.T) {
 	}
 }
 
+func TestActivityQuiz(t *testing.T) {
+	l, _, src, key := enrolledCourse(t)
+	writeFile(t, filepath.Join(src, "basics", "hello", manifest.ActivityFile),
+		"version: 1\ntype: quiz\ntheory_blocks:\n"+
+			"  - kind: markdown\n    data: {content: '# Quiz'}\n"+
+			"data:\n  questions:\n"+
+			"    - kind: choice\n      prompt: Pick one\n      explanation: Because\n"+
+			"      data:\n        options:\n"+
+			"          - {text: A, correct: true}\n"+
+			"          - {text: B, feedback: Not B}\n"+
+			"    - kind: choice\n"+
+			"      data:\n        multiple: true\n        options:\n"+
+			"          - {text: C, correct: true}\n"+
+			"          - {text: D}\n")
+	syncCourse(t, l, key)
+
+	a, err := l.Activity(key, "hello")
+	if err != nil {
+		t.Fatalf("Activity: %v", err)
+	}
+
+	want := Activity{
+		Slug:         "hello",
+		Title:        "Hello",
+		Dir:          "basics/hello",
+		Type:         manifest.TypeQuiz,
+		TheoryBlocks: []TheoryBlock{{Kind: manifest.KindMarkdown, Content: "# Quiz"}},
+		Quiz: &Quiz{Questions: []Question{
+			{
+				Kind:        "choice",
+				Prompt:      "Pick one",
+				Explanation: "Because",
+				Options:     []Option{{Text: "A", Correct: true}, {Text: "B", Feedback: "Not B"}},
+			},
+			{
+				Kind:     "choice",
+				Multiple: true,
+				Options:  []Option{{Text: "C", Correct: true}, {Text: "D"}},
+			},
+		}},
+	}
+	if !reflect.DeepEqual(a, want) {
+		t.Errorf("activity = %+v\nwant %+v", a, want)
+	}
+}
+
 func TestActivityMissingFile(t *testing.T) {
 	l, _, src, key := enrolledCourse(t)
 	if err := os.Remove(filepath.Join(src, "basics", "hello", manifest.ActivityFile)); err != nil {

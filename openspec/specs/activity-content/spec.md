@@ -18,7 +18,7 @@ Defines the `activity.yaml` file, the activity types and what each lets the lear
 - **THEN** the activity shows no control buttons
 
 ### Requirement: Theory blocks
-`theory_blocks` SHALL be a list of at least one theory block, shown in order at the top of the activity in every activity type. A theory block SHALL have `kind` (required) and `data` (object whose shape depends on `kind`, required).
+`theory_blocks` SHALL be a list of at least one theory block, shown in order at the top of the activity in every activity type; a `quiz` activity shows them on its theory screen instead. A theory block SHALL have `kind` (required) and `data` (object whose shape depends on `kind`, required).
 
 ```yaml
 theory_blocks:
@@ -71,11 +71,15 @@ A `theory` activity SHALL show its theory blocks and its controls, if any. `data
 - **THEN** opening the activity shows an activity error
 
 ### Requirement: quiz type
-A `quiz` activity SHALL show its theory blocks followed by its questions. `data` SHALL be required and SHALL hold the questions.
+A `quiz` activity SHALL show its theory blocks on a theory screen and its questions on a separate quiz screen opened from it. `data` SHALL be required and SHALL hold the questions.
 
 #### Scenario: Quiz without data
 - **WHEN** a `quiz` activity has no `data`
 - **THEN** opening the activity shows an activity error
+
+#### Scenario: Theory and questions are separate
+- **WHEN** the learner opens a valid `quiz` activity
+- **THEN** its theory blocks are shown without its questions
 
 ### Requirement: coding type
 A `coding` activity SHALL show its theory blocks, an "Open in external editor" button, the output panel and its controls. `data` SHALL be required and SHALL contain `workspace`: a list of at least one item, each an object with a required `path` to a file or folder relative to the activity folder.

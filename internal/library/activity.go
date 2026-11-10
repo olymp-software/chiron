@@ -21,6 +21,8 @@ type Activity struct {
 	// Type is the activity type, empty in a workshop.
 	Type         string        `json:"type"`
 	TheoryBlocks []TheoryBlock `json:"theoryBlocks"`
+	// Quiz is set for a quiz activity that is not broken.
+	Quiz *Quiz `json:"quiz,omitempty"`
 	// Workshop is set for an activity of a workshop that is not broken.
 	Workshop        *WorkshopActivity `json:"workshop,omitempty"`
 	Last            bool              `json:"last"`
@@ -32,6 +34,29 @@ type Activity struct {
 type TheoryBlock struct {
 	Kind    string `json:"kind"`
 	Content string `json:"content"`
+}
+
+// Quiz is the questions of a quiz activity, correct options included: the
+// frontend evaluates answers, which are not protected.
+type Quiz struct {
+	Questions []Question `json:"questions"`
+}
+
+// Question is one quiz question; choice is the only kind, so its data is
+// flattened into the question.
+type Question struct {
+	Kind        string   `json:"kind"`
+	Prompt      string   `json:"prompt"`
+	Explanation string   `json:"explanation"`
+	Multiple    bool     `json:"multiple"`
+	Options     []Option `json:"options"`
+}
+
+// Option is one selectable item of a choice question.
+type Option struct {
+	Text     string `json:"text"`
+	Correct  bool   `json:"correct"`
+	Feedback string `json:"feedback"`
 }
 
 // Activity reads the available activity slug of the enrolled course with key.
@@ -70,6 +95,7 @@ func (l *Library) Activity(key, slug string) (Activity, error) {
 		if err == nil {
 			a.Type = parsed.Type
 			a.TheoryBlocks = theoryBlocks(parsed.TheoryBlocks)
+			a.Quiz = quiz(parsed.Quiz)
 		}
 	}
 	if err != nil {
@@ -106,6 +132,28 @@ func theoryBlocks(blocks []manifest.TheoryBlock) []TheoryBlock {
 	out := make([]TheoryBlock, len(blocks))
 	for i, b := range blocks {
 		out[i] = TheoryBlock{Kind: b.Kind, Content: b.Data.Content}
+	}
+	return out
+}
+
+// quiz converts the quiz data of an activity, nil for other types.
+func quiz(q *manifest.Quiz) *Quiz {
+	if q == nil {
+		return nil
+	}
+	out := &Quiz{Questions: make([]Question, len(q.Questions))}
+	for i, mq := range q.Questions {
+		options := make([]Option, len(mq.Data.Options))
+		for j, o := range mq.Data.Options {
+			options[j] = Option{Text: o.Text, Correct: o.Correct, Feedback: o.Feedback}
+		}
+		out.Questions[i] = Question{
+			Kind:        mq.Kind,
+			Prompt:      mq.Prompt,
+			Explanation: mq.Explanation,
+			Multiple:    mq.Data.Multiple,
+			Options:     options,
+		}
 	}
 	return out
 }

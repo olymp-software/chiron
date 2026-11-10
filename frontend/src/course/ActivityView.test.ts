@@ -203,6 +203,77 @@ describe('ActivityView', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
+  function quizActivity(slug = 'hello'): library.Activity {
+    return activity({
+      slug,
+      type: 'quiz',
+      quiz: library.Quiz.createFrom({
+        questions: [
+          {
+            kind: 'choice',
+            prompt: 'Pick',
+            explanation: '',
+            multiple: false,
+            options: [
+              { text: 'Right', correct: true, feedback: '' },
+              { text: 'Wrong', correct: false, feedback: '' },
+            ],
+          },
+        ],
+      }),
+    })
+  }
+
+  it('opens a quiz on its theory screen', async () => {
+    loads(quizActivity())
+
+    const w = mountView()
+    await flushPromises()
+
+    await vi.waitFor(() => expect(w.get('.theory .markdown h1').text()).toBe('Hi'))
+    expect(w.get('.theory .start').text()).toBe('Start quiz')
+    expect(w.find('.question').exists()).toBe(false)
+  })
+
+  it('offers Next on both quiz screens', async () => {
+    loads(quizActivity())
+    completeActivity.mockResolvedValue(
+      main.CompleteResult.createFrom({ next: 'loops', tree: tree({ current: 'loops' }) }),
+    )
+    const w = mountView()
+    await flushPromises()
+
+    expect(w.get('footer button').text()).toBe('Next')
+    await w.get('.theory .start').trigger('click')
+    expect(w.get('footer button').text()).toBe('Next')
+    await w.get('footer button').trigger('click')
+    await flushPromises()
+
+    expect(completeActivity).toHaveBeenCalledExactlyOnceWith('go-1', 'hello')
+  })
+
+  it('starts a reopened quiz fresh', async () => {
+    loads(quizActivity())
+    const w = mountView()
+    await flushPromises()
+    await w.get('.theory .start').trigger('click')
+    await w.findAll('.question input')[0].trigger('change')
+    await w.get('.question button').trigger('click')
+    expect(w.get('.result').text()).toBe('Correct')
+
+    loads(activity({ slug: 'loops' }))
+    await w.setProps({ slug: 'loops' })
+    await flushPromises()
+    loads(quizActivity())
+    await w.setProps({ slug: 'hello' })
+    await flushPromises()
+
+    expect(w.get('.theory .start').text()).toBe('Start quiz')
+    await w.get('.theory .start').trigger('click')
+    expect(w.find('.result').exists()).toBe(false)
+    expect(w.get('.counter').text()).toBe('Correct: 0 of 1')
+  })
+
   it('opens the current activity instead of an unavailable one', async () => {
     await router.push('/courses/go-1/activities/maps')
     loadActivity.mockResolvedValue(

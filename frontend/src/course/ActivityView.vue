@@ -12,6 +12,7 @@ import ErrorView from '../errors/ErrorView.vue'
 import { activityImages } from '../markdown/images'
 import MarkdownView from '../markdown/MarkdownView.vue'
 import LeaveConfirm from './LeaveConfirm.vue'
+import QuizActivity from './QuizActivity.vue'
 import WorkshopActivity from './WorkshopActivity.vue'
 
 const props = defineProps<{ courseKey: string; slug: string; tree: library.Tree }>()
@@ -152,6 +153,14 @@ async function complete() {
       :workshop="activity.workshop"
       :resolve-image="resolveImage"
       @running="(r: boolean) => (running = r)"
+    />
+    <!-- Every load unmounts the view first, so an opened quiz starts fresh. -->
+    <QuizActivity
+      v-else-if="activity.quiz"
+      :key="activity.slug"
+      :theory-blocks="activity.theoryBlocks"
+      :quiz="activity.quiz"
+      :resolve-image="resolveImage"
     />
     <template v-else>
       <template v-for="(b, i) in activity.theoryBlocks" :key="i">
