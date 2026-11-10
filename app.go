@@ -3,19 +3,23 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 
+	"github.com/wailsapp/wails/v2/pkg/options"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/olymp-software/chiron/internal/apperr"
 	"github.com/olymp-software/chiron/internal/library"
+	"github.com/olymp-software/chiron/internal/platform"
 	"github.com/olymp-software/chiron/internal/runtime"
 	"github.com/olymp-software/chiron/internal/settings"
 )
 
-// Events of a running environment check; their payloads are CheckOutput and
-// CheckExit.
+// Events of every running script, told apart by run id; their payloads are
+// CheckOutput and CheckExit.
 const (
 	checkOutputEvent = "check:output"
 	checkExitEvent   = "check:exit"
@@ -31,6 +35,8 @@ type App struct {
 	log      *slog.Logger
 	// runIDs numbers script runs, so the UI can tell events of runs apart.
 	runIDs atomic.Int64
+	// stops holds the stop function of each running script by run id.
+	stops sync.Map
 }
 
 // NewApp creates the bound App.
@@ -39,8 +45,19 @@ func NewApp(lib *library.Library, st *settings.Store, log *slog.Logger) *App {
 }
 
 // startup is called when the app starts; the context is kept for runtime calls.
+// The library is repaired only here: a second instance quits before startup,
+// so it never touches what the running one uses.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if err := a.lib.Recover(); err != nil {
+		a.log.Error("repair library", "err", err)
+	}
+}
+
+// secondInstance brings the window forward when the app is started again.
+func (a *App) secondInstance(options.SecondInstanceData) {
+	wailsruntime.WindowUnminimise(a.ctx)
+	wailsruntime.WindowShow(a.ctx)
 }
 
 // ErrorResult is the error of an operation that returns nothing else.
@@ -195,11 +212,23 @@ func (a *App) CompleteActivity(key, slug string) CompleteResult {
 // arrive as check:output and check:exit events with the returned run id;
 // output may arrive before StartCheck returns.
 func (a *App) StartCheck(key string) StartCheckResult {
+	return a.startRun(func(out io.Writer, done func(runtime.Result)) (func(), error) {
+		return nil, a.lib.StartCheck(key, out, done)
+	})
+}
+
+// startRun starts a script through start and sends its output and result as
+// check:output and check:exit events with the returned run id. A run whose
+// start returns a stop function can be stopped by StopRun with its run id.
+func (a *App) startRun(start func(out io.Writer, done func(runtime.Result)) (func(), error)) StartCheckResult {
 	id := a.runIDs.Add(1)
 	b := runtime.NewBatcher(func(text string) {
 		wailsruntime.EventsEmit(a.ctx, checkOutputEvent, CheckOutput{RunID: id, Text: text})
 	})
-	err := a.lib.StartCheck(key, b, func(res runtime.Result) {
+	var finished atomic.Bool
+	stop, err := start(b, func(res runtime.Result) {
+		finished.Store(true)
+		a.stops.Delete(id)
 		b.Close()
 		wailsruntime.EventsEmit(a.ctx, checkExitEvent, CheckExit{RunID: id, ExitCode: res.ExitCode, Stopped: res.Stopped})
 	})
@@ -207,13 +236,75 @@ func (a *App) StartCheck(key string) StartCheckResult {
 		b.Close()
 		return StartCheckResult{Error: a.coded(err)}
 	}
+	if stop != nil {
+		a.stops.Store(id, stop)
+		// The run may have finished before its stop function was stored.
+		if finished.Load() {
+			a.stops.Delete(id)
+		}
+	}
 	return StartCheckResult{RunID: id}
+}
+
+// StopRun stops the script run with the run id, if it is still running, and
+// returns once it has exited. It never stops another run, even of the same
+// control.
+func (a *App) StopRun(runID int64) ErrorResult {
+	if stop, ok := a.stops.LoadAndDelete(runID); ok {
+		stop.(func())()
+	}
+	return ErrorResult{}
 }
 
 // CancelCheck stops the running environment check of a course and returns
 // once it has exited; the remembered result is unchanged.
 func (a *App) CancelCheck(key string) ErrorResult {
 	a.lib.StopCheck(key)
+	return ErrorResult{}
+}
+
+// StartControl starts a control of an activity of a workshop. Its events are
+// those of StartCheck; StopRun stops it.
+func (a *App) StartControl(key, slug string, index int) StartCheckResult {
+	return a.startRun(func(out io.Writer, done func(runtime.Result)) (func(), error) {
+		return a.lib.StartControl(key, slug, index, out, done)
+	})
+}
+
+// StopActivityRuns stops every script of a workshop and returns once they have
+// exited: the learner has confirmed leaving the activity.
+func (a *App) StopActivityRuns(key string) ErrorResult {
+	a.lib.StopActivityRuns(key)
+	return ErrorResult{}
+}
+
+// StartActivityCheck starts the Check of an activity of a workshop. Its events
+// are those of StartCheck; StopRun stops it.
+func (a *App) StartActivityCheck(key, slug string) StartCheckResult {
+	return a.startRun(func(out io.Writer, done func(runtime.Result)) (func(), error) {
+		return a.lib.StartActivityCheck(key, slug, out, done)
+	})
+}
+
+// StartWorkshopControl starts a control of workshop.yaml. Its events are those
+// of StartCheck; StopRun stops it.
+func (a *App) StartWorkshopControl(key string, index int) StartCheckResult {
+	return a.startRun(func(out io.Writer, done func(runtime.Result)) (func(), error) {
+		return a.lib.StartWorkshopControl(key, index, out, done)
+	})
+}
+
+// OpenFolder opens the workshop folder in the file manager. There is no editor
+// setting yet, and the file manager is what the button opens without one.
+func (a *App) OpenFolder(key string) ErrorResult {
+	folder, err := a.lib.EnsureWorkshopFolder(key)
+	if err != nil {
+		return ErrorResult{Error: a.coded(err)}
+	}
+	if err := platform.OpenFolder(folder); err != nil {
+		a.log.Error("open workshop folder", "path", folder, "err", err)
+		return ErrorResult{Error: apperr.New(apperr.WorkshopFolderFailed)}
+	}
 	return ErrorResult{}
 }
 

@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/olymp-software/chiron/internal/apperr"
 	"github.com/olymp-software/chiron/internal/manifest"
@@ -37,7 +36,7 @@ func (l *Library) StartCheck(key string, out io.Writer, done func(runtime.Result
 	unlock := l.lockCourse(e.Key)
 	defer unlock()
 	root := l.CopyPath(e.Key)
-	c, err := manifest.ParseCourse(root)
+	c, err := manifest.Parse(root)
 	if err != nil {
 		return err
 	}
@@ -94,8 +93,9 @@ func (l *Library) StopCheck(key string) {
 	}
 }
 
-// StopAll stops every running check and waits until they have finished.
+// StopAll stops every running script and waits until they have finished.
 func (l *Library) StopAll() {
+	l.runs.stop(func(*scriptRun) bool { return true })
 	l.checksMu.Lock()
 	checks := make([]*check, 0, len(l.checks))
 	for _, ch := range l.checks {
@@ -179,18 +179,4 @@ func readCheck(root, path string) ([]byte, error) {
 func hashOf(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
-}
-
-// checkEnv is the inherited environment without the activity variables,
-// which the check does not get.
-func checkEnv() []string {
-	var env []string
-	for _, kv := range os.Environ() {
-		name, _, _ := strings.Cut(kv, "=")
-		if strings.EqualFold(name, "ACTIVITY_DIR") || strings.EqualFold(name, "WORKSPACE_DIR") {
-			continue
-		}
-		env = append(env, kv)
-	}
-	return env
 }

@@ -33,11 +33,19 @@ function started(runId: number) {
   startCheck.mockResolvedValue({ runId } as main.StartCheckResult)
 }
 
+function newRun(onOutput: (text: string) => void = () => {}) {
+  return useCheckRun(
+    () => startCheck('go-1'),
+    () => cancelCheck('go-1'),
+    onOutput,
+  )
+}
+
 describe('useCheckRun', () => {
   it('keeps only output and exit of its own run', async () => {
     started(7)
     const output: string[] = []
-    const run = useCheckRun('go-1', (t) => output.push(t))
+    const run = newRun((t) => output.push(t))
 
     await run.start()
     emit('check:output', { runId: 6, text: 'old run\n' })
@@ -62,7 +70,7 @@ describe('useCheckRun', () => {
       emit('check:exit', { runId: 3, exitCode: 1, stopped: false })
       return { runId: 3 } as main.StartCheckResult
     })
-    const run = useCheckRun('go-1', (t) => output.push(t))
+    const run = newRun((t) => output.push(t))
 
     await run.start()
 
@@ -73,7 +81,7 @@ describe('useCheckRun', () => {
   it('cancels the running check', async () => {
     started(1)
     cancelCheck.mockResolvedValue({} as main.ErrorResult)
-    const run = useCheckRun('go-1', () => {})
+    const run = newRun()
     await run.start()
 
     expect(await run.cancel()).toBe(true)
@@ -86,7 +94,7 @@ describe('useCheckRun', () => {
   it('reports a failed cancel', async () => {
     started(1)
     cancelCheck.mockResolvedValue({ error: { code: 'internal' } } as main.ErrorResult)
-    const run = useCheckRun('go-1', () => {})
+    const run = newRun()
     await run.start()
 
     expect(await run.cancel()).toBe(false)
@@ -100,7 +108,7 @@ describe('useCheckRun', () => {
       runId: 0,
       error: { code: 'checkRunning' },
     } as main.StartCheckResult)
-    const run = useCheckRun('go-1', () => {})
+    const run = newRun()
 
     await run.start()
 
@@ -111,7 +119,7 @@ describe('useCheckRun', () => {
 
   it('unsubscribes and stops the running check on dispose', async () => {
     started(1)
-    const run = useCheckRun('go-1', () => {})
+    const run = newRun()
     await run.start()
 
     run.dispose()
@@ -122,7 +130,7 @@ describe('useCheckRun', () => {
 
   it('does not cancel a finished check on dispose', async () => {
     started(1)
-    const run = useCheckRun('go-1', () => {})
+    const run = newRun()
     await run.start()
     emit('check:exit', { runId: 1, exitCode: 0, stopped: false })
 
@@ -131,10 +139,40 @@ describe('useCheckRun', () => {
     expect(cancelCheck).not.toHaveBeenCalled()
   })
 
+  it('neither subscribes nor starts once disposed before start', async () => {
+    const run = newRun()
+
+    run.dispose()
+    await run.start()
+
+    expect(listeners.size).toBe(0)
+    expect(startCheck).not.toHaveBeenCalled()
+  })
+
+  it('stops by the run id once it is known when cancelled early', async () => {
+    let resolve: (r: main.StartCheckResult) => void = () => {}
+    startCheck.mockReturnValue(new Promise((r) => (resolve = r)))
+    const cancelRun = vi.fn().mockResolvedValue({} as main.ErrorResult)
+    const run = useCheckRun(
+      () => startCheck('go-1'),
+      cancelRun,
+      () => {},
+    )
+    const starting = run.start()
+
+    const cancelled = run.cancel()
+    expect(cancelRun).not.toHaveBeenCalled()
+    resolve({ runId: 4 } as main.StartCheckResult)
+    await starting
+
+    expect(await cancelled).toBe(true)
+    expect(cancelRun).toHaveBeenCalledExactlyOnceWith(4)
+  })
+
   it('stops a check disposed before StartCheck returns', async () => {
     let resolve: (r: main.StartCheckResult) => void = () => {}
     startCheck.mockReturnValue(new Promise((r) => (resolve = r)))
-    const run = useCheckRun('go-1', () => {})
+    const run = newRun()
     const starting = run.start()
 
     run.dispose()

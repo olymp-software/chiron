@@ -250,6 +250,14 @@ func TestStopBuiltinLoop(t *testing.T) {
 	r.Stop()
 }
 
+// A stopped run must be able to wait for its output and its processes before
+// the abandon timer gives up on it.
+func TestDelaysLeaveRoomBeforeAbandon(t *testing.T) {
+	if waitDelay+closeWait >= abandonDelay {
+		t.Errorf("waitDelay %v + closeWait %v must stay below abandonDelay %v", waitDelay, closeWait, abandonDelay)
+	}
+}
+
 func TestStopAfterExit(t *testing.T) {
 	var out syncBuffer
 	r := Start(helperSpec(t, t.TempDir(), `exit 4`), &out)

@@ -11,10 +11,13 @@ import (
 // Tree is what the course tree shows: the sections and activities of
 // course.yaml, the current activity and whether the course is completed.
 type Tree struct {
-	Title     string        `json:"title"`
-	Current   string        `json:"current"`
-	Completed bool          `json:"completed"`
-	Sections  []TreeSection `json:"sections"`
+	Title string `json:"title"`
+	// Type is the content type; WorkshopFolder is set only for a workshop.
+	Type           string        `json:"type"`
+	WorkshopFolder string        `json:"workshopFolder,omitempty"`
+	Current        string        `json:"current"`
+	Completed      bool          `json:"completed"`
+	Sections       []TreeSection `json:"sections"`
 }
 
 // TreeSection is a section of the course tree.
@@ -85,17 +88,22 @@ func (l *Library) Tree(key string) (Tree, error) {
 	if err != nil {
 		return Tree{}, err
 	}
-	return tree(c, p), nil
+	return l.tree(key, c, p), nil
 }
 
-// tree builds the course tree of c with progress p.
-func tree(c *manifest.Course, p progress.Progress) Tree {
+// tree builds the course tree of the course with key and manifest c with
+// progress p.
+func (l *Library) tree(key string, c *manifest.Course, p progress.Progress) Tree {
 	p = progress.Resolve(order(c), p)
 	t := Tree{
 		Title:     c.Title,
+		Type:      c.Type,
 		Current:   p.Current,
 		Completed: p.CourseCompleted,
 		Sections:  make([]TreeSection, len(c.Sections)),
+	}
+	if c.Type == manifest.ContentWorkshop {
+		t.WorkshopFolder = l.WorkshopFolder(key)
 	}
 	for si, s := range c.Sections {
 		ts := TreeSection{Slug: s.Slug, Title: s.Title, Activities: make([]TreeActivity, len(s.Activities))}
@@ -127,7 +135,7 @@ func (l *Library) course(key string) (Entry, *manifest.Course, error) {
 	}
 	unlock := l.lockCourse(e.Key)
 	defer unlock()
-	c, err := manifest.ParseCourse(l.CopyPath(e.Key))
+	c, err := manifest.Parse(l.CopyPath(e.Key))
 	return e, c, err
 }
 

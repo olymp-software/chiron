@@ -9,7 +9,19 @@ import _ "embed"
 //go:embed course/v1.json
 var CourseV1 []byte
 
-// ActivityV1 is the JSON Schema of activity.yaml, schema version 1.
+// CourseActivityV1 is the JSON Schema of activity.yaml of a course, schema
+// version 1.
 //
-//go:embed activity/v1.json
-var ActivityV1 []byte
+//go:embed course-activity/v1.json
+var CourseActivityV1 []byte
+
+// WorkshopV1 is the JSON Schema of workshop.yaml, schema version 1.
+//
+//go:embed workshop/v1.json
+var WorkshopV1 []byte
+
+// WorkshopActivityV1 is the JSON Schema of activity.yaml of a workshop, schema
+// version 1.
+//
+//go:embed workshop-activity/v1.json
+var WorkshopActivityV1 []byte

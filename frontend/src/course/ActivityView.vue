@@ -1,24 +1,69 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { Activity as LoadActivity, CompleteActivity } from '../../wailsjs/go/main/App'
+import { useI18n } from 'vue-i18n'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router'
+import {
+  Activity as LoadActivity,
+  CompleteActivity,
+  StopActivityRuns,
+} from '../../wailsjs/go/main/App'
 import type { apperr, library } from '../../wailsjs/go/models'
 import ErrorView from '../errors/ErrorView.vue'
 import { activityImages } from '../markdown/images'
 import MarkdownView from '../markdown/MarkdownView.vue'
+import LeaveConfirm from './LeaveConfirm.vue'
+import WorkshopActivity from './WorkshopActivity.vue'
 
 const props = defineProps<{ courseKey: string; slug: string; tree: library.Tree }>()
 
 const emit = defineEmits<{ tree: [tree: library.Tree] }>()
 
 const router = useRouter()
+const { t } = useI18n()
 
 const activity = ref<library.Activity>()
 const error = ref<apperr.Error>()
 const completing = ref(false)
 const completeError = ref<apperr.Error>()
+// running tells that a control of the activity is running.
+const running = ref(false)
+const confirmingLeave = ref(false)
+
+// leaving is the open leave confirmation; a second navigation shares it.
+let leaving: Promise<boolean> | undefined
+let answerLeave: (leave: boolean) => void = () => {}
+
+// confirmLeave asks whether to leave while a control runs and reports whether
+// the learner may go; the running scripts are stopped by then.
+function confirmLeave(): Promise<boolean> {
+  if (!running.value) {
+    return Promise.resolve(true)
+  }
+  leaving ??= new Promise((resolve) => {
+    answerLeave = resolve
+    confirmingLeave.value = true
+  })
+  return leaving
+}
+
+async function leaveAnswered(leave: boolean) {
+  confirmingLeave.value = false
+  if (leave) {
+    await StopActivityRuns(props.courseKey)
+    // The exit events may still be on their way; the guards must not ask again.
+    running.value = false
+  }
+  leaving = undefined
+  answerLeave(leave)
+}
+
+onBeforeRouteLeave(() => confirmLeave())
+onBeforeRouteUpdate(() => confirmLeave())
 
 const resolveImage = computed(() => activityImages(props.courseKey, activity.value?.dir ?? ''))
+const finishLabel = computed(() =>
+  t(props.tree.type === 'workshop' ? 'workshop.finish' : 'course.finish'),
+)
 
 // loads numbers activity loads, so a slow answer for an activity the learner
 // has already left is dropped.
@@ -33,6 +78,7 @@ watch(
   async () => {
     const load = ++loads
     activity.value = undefined
+    running.value = false
     error.value = undefined
     completeError.value = undefined
     const res = await LoadActivity(props.courseKey, props.slug)
@@ -63,10 +109,13 @@ async function complete() {
   if (!a || completing.value) {
     return
   }
-  const load = loads
   completing.value = true
   completeError.value = undefined
   try {
+    if (!(await confirmLeave())) {
+      return
+    }
+    const load = loads
     const res = await CompleteActivity(props.courseKey, a.slug)
     if (!res.error) {
       emit('tree', res.tree)
@@ -96,6 +145,14 @@ async function complete() {
   <article v-else class="activity">
     <h1>{{ activity.title }}</h1>
     <ErrorView v-if="activity.error" :error="activity.error" />
+    <WorkshopActivity
+      v-else-if="activity.workshop"
+      :course-key="courseKey"
+      :activity="activity"
+      :workshop="activity.workshop"
+      :resolve-image="resolveImage"
+      @running="(r: boolean) => (running = r)"
+    />
     <template v-else>
       <template v-for="(b, i) in activity.theoryBlocks" :key="i">
         <MarkdownView
@@ -110,10 +167,15 @@ async function complete() {
         {{ $t('course.completed') }}
       </p>
       <button v-else :disabled="completing" @click="complete">
-        {{ activity.last ? $t('course.finish') : $t('course.next') }}
+        {{ activity.last ? finishLabel : $t('course.next') }}
       </button>
       <ErrorView v-if="completeError" :error="completeError" />
     </footer>
+    <LeaveConfirm
+      v-if="confirmingLeave"
+      @confirm="leaveAnswered(true)"
+      @cancel="leaveAnswered(false)"
+    />
   </article>
 </template>
 

@@ -30,6 +30,12 @@ const waitDelay = time.Second
 // behind and the run counts as stopped.
 var abandonDelay = 3 * time.Second
 
+// closeWait bounds how long a finished run waits for its killed processes to
+// be gone. A process that outlives it cannot be helped and must not hang the
+// run. With waitDelay it stays below abandonDelay, so a stopped run reports
+// its own result only after its processes are gone.
+const closeWait = time.Second
+
 // Spec is a script to run. Name is the script's file name used in parse
 // errors; Env is the inherited environment as key=value pairs.
 type Spec struct {
@@ -77,8 +83,10 @@ func Start(spec Spec, out io.Writer) *Run {
 		r.exited = true
 		stopped := r.stopped
 		r.mu.Unlock()
-		r.tree.close()
+		// Cancelling first keeps background code of the script from starting
+		// more commands while close waits.
 		cancel()
+		r.tree.close()
 		r.finish(Result{ExitCode: code, Stopped: stopped})
 	}()
 	return r
@@ -97,7 +105,8 @@ func (r *Run) finish(res Result) {
 }
 
 // Wait waits for the script to exit and returns its result. Processes the
-// script left running are killed when it exits.
+// script left running are killed when it exits and are gone when Wait returns,
+// so their ports and files are free.
 func (r *Run) Wait() Result {
 	<-r.done
 	r.mu.Lock()

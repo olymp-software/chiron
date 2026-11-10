@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { AddLocalCourse, ListCourses, PickFolder } from '../../wailsjs/go/main/App'
@@ -15,6 +15,14 @@ const error = ref<apperr.Error>()
 // pendingPath is the picked folder waiting for the script warning.
 const pendingPath = ref('')
 const adding = ref(false)
+
+// groups are the sections of the library; one without entries is not shown.
+const groups = computed(() =>
+  [
+    { title: 'library.courses', items: courses.value.filter((c) => c.type !== 'workshop') },
+    { title: 'library.workshops', items: courses.value.filter((c) => c.type === 'workshop') },
+  ].filter((g) => g.items.length),
+)
 
 onMounted(async () => {
   const res = await ListCourses()
@@ -54,15 +62,18 @@ async function add() {
     </div>
     <ErrorView v-if="error" :error="error" />
     <p v-if="!courses.length && !error">{{ $t('library.empty') }}</p>
-    <ul v-else>
-      <li v-for="c in courses" :key="c.key">
-        <button class="course" @click="router.push(`/library/${c.key}`)">
-          <span>{{ c.title }}</span>
-          <span v-if="c.completed" class="status">{{ $t('library.completed') }}</span>
-          <span v-else-if="c.enrolled" class="status">{{ $t('library.enrolled') }}</span>
-        </button>
-      </li>
-    </ul>
+    <section v-for="g in groups" :key="g.title" class="group">
+      <h2>{{ $t(g.title) }}</h2>
+      <ul>
+        <li v-for="c in g.items" :key="c.key">
+          <button class="course" @click="router.push(`/library/${c.key}`)">
+            <span>{{ c.title }}</span>
+            <span v-if="c.completed" class="status">{{ $t('library.completed') }}</span>
+            <span v-else-if="c.enrolled" class="status">{{ $t('library.enrolled') }}</span>
+          </button>
+        </li>
+      </ul>
+    </section>
     <ScriptWarning v-if="pendingPath" @confirm="add" @cancel="pendingPath = ''" />
   </section>
 </template>
@@ -80,8 +91,14 @@ async function add() {
   gap: 1rem;
 }
 
-h1 {
+h1,
+h2 {
   margin: 0;
+}
+
+.group {
+  display: grid;
+  gap: 0.5rem;
 }
 
 ul {

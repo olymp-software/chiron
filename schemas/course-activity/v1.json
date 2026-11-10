@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/olymp-software/chiron/schemas/activity/v1.json",
-  "title": "Chiron activity (activity.yaml), schema version 1",
+  "$id": "https://github.com/olymp-software/chiron/schemas/course-activity/v1.json",
+  "title": "Chiron course activity (activity.yaml), schema version 1",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "type", "theory_blocks"],

@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -53,7 +54,8 @@ func (t *tree) prepare(cmd *exec.Cmd) {
 }
 
 // add assigns the started, still suspended cmd to the job and resumes it. A
-// command that cannot be assigned, or is started after kill, is terminated.
+// command that cannot be assigned, or is started after kill, is terminated; in
+// the latter case it is still assigned, so close waits for it too.
 func (t *tree) add(cmd *exec.Cmd) error {
 	h, err := windows.OpenProcess(
 		windows.PROCESS_SET_QUOTA|windows.PROCESS_TERMINATE|windows.PROCESS_SUSPEND_RESUME,
@@ -66,6 +68,9 @@ func (t *tree) add(cmd *exec.Cmd) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.killed {
+		if !t.closed && t.err == nil {
+			_ = windows.AssignProcessToJobObject(t.job, h)
+		}
 		_ = windows.TerminateProcess(h, 1)
 		return nil
 	}
@@ -96,14 +101,49 @@ func (t *tree) kill() {
 	}
 }
 
-// close kills what is left when the script exits and releases the job.
+// close kills what is left when the script exits, waits until it is gone and
+// releases the job: terminating a job does not wait for its processes.
+// The lock is not held while waiting, so a command added meanwhile joins the
+// job and is waited for as well. close runs once per run, so the job handle
+// stays valid until it closes it.
 func (t *tree) close() {
 	t.kill()
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.closed || t.err != nil {
+	skip := t.closed || t.err != nil
+	t.mu.Unlock()
+	if skip {
 		return
 	}
+	deadline := time.Now().Add(closeWait)
+	for t.activeProcesses() > 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.closed = true
 	_ = windows.CloseHandle(t.job)
+}
+
+// jobAccounting is JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, which x/sys does
+// not define.
+type jobAccounting struct {
+	TotalUserTime             int64
+	TotalKernelTime           int64
+	ThisPeriodTotalUserTime   int64
+	ThisPeriodTotalKernelTime int64
+	TotalPageFaultCount       uint32
+	TotalProcesses            uint32
+	ActiveProcesses           uint32
+	TotalTerminatedProcesses  uint32
+}
+
+// activeProcesses returns how many processes are in the job; a failed query
+// counts as none, so close does not wait for nothing.
+func (t *tree) activeProcesses() uint32 {
+	var info jobAccounting
+	if err := windows.QueryInformationJobObject(t.job, windows.JobObjectBasicAccountingInformation,
+		uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil); err != nil {
+		return 0
+	}
+	return info.ActiveProcesses
 }

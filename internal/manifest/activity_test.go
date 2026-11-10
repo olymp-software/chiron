@@ -191,6 +191,142 @@ func TestParseActivityNewerApp(t *testing.T) {
 	}
 }
 
+func TestParseWorkshopActivityValid(t *testing.T) {
+	block := []TheoryBlock{{Kind: KindMarkdown, Data: MarkdownData{Content: "# Hi"}}}
+	tests := []struct {
+		name  string
+		yaml  string
+		files []string
+		want  *WorkshopActivity
+	}{
+		{
+			name: "only theory blocks",
+			yaml: "version: 1\n" + theoryBlocks,
+			want: &WorkshopActivity{Version: 1, TheoryBlocks: block},
+		},
+		{
+			name: "every field",
+			yaml: "version: 1\n" + theoryBlocks + "solution: Undo it\ncheck: check.sh\n" +
+				"controls:\n  - {label: Up, script: up.sh, concurrency: server}\n" +
+				"files:\n  - path: manifests\n  - path: main.go\n",
+			files: []string{"check.sh", "up.sh", "manifests/", "main.go"},
+			want: &WorkshopActivity{
+				Version:      1,
+				TheoryBlocks: block,
+				Solution:     "Undo it",
+				Check:        "check.sh",
+				Controls:     []Control{{Label: "Up", Script: "up.sh", Concurrency: "server"}},
+				Files:        []WorkspaceItem{{Path: "manifests"}, {Path: "main.go"}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := writeActivity(t, tt.yaml, tt.files...)
+
+			a, err := ParseWorkshopActivity(root, "basics", "hello")
+			if err != nil {
+				t.Fatalf("ParseWorkshopActivity: %v", err)
+			}
+			if !reflect.DeepEqual(a, tt.want) {
+				t.Errorf("activity = %+v\nwant %+v", a, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseWorkshopActivityErrors(t *testing.T) {
+	invalid := func(problems ...apperr.Problem) *apperr.Error {
+		e := apperr.New(apperr.ManifestInvalid, "file", activityFile)
+		e.Problems = problems
+		return e
+	}
+	tests := []struct {
+		name  string
+		yaml  string
+		files []string
+		want  *apperr.Error
+	}{
+		{
+			name: "type",
+			yaml: "version: 1\ntype: theory\n" + theoryBlocks,
+			want: invalid(apperr.NewProblem(apperr.UnknownField, "", "field", "type")),
+		},
+		{
+			name: "unknown type names the field",
+			yaml: "version: 1\ntype: terminal\n" + theoryBlocks,
+			want: invalid(apperr.NewProblem(apperr.UnknownField, "", "field", "type")),
+		},
+		{
+			name: "data",
+			yaml: "version: 1\ndata: {}\n" + theoryBlocks,
+			want: invalid(apperr.NewProblem(apperr.UnknownField, "", "field", "data")),
+		},
+		{
+			name: "newer schema",
+			yaml: "version: 2\nhints: []\n",
+			want: apperr.New(apperr.UnsupportedSchemaVersion, "file", activityFile, "version", "2"),
+		},
+		{
+			name: "unknown block kind",
+			yaml: "version: 1\ntheory_blocks:\n  - kind: diagram\n    data: {}\n",
+			want: apperr.New(apperr.UnsupportedBlockKind, "file", activityFile, "kind", "diagram"),
+		},
+		{
+			name: "empty solution",
+			yaml: "version: 1\nsolution: ''\n" + theoryBlocks,
+			want: invalid(apperr.NewProblem(apperr.EmptyString, "solution")),
+		},
+		{
+			name:  "check outside the activity folder",
+			yaml:  "version: 1\ncheck: ../shared/check.sh\n" + theoryBlocks,
+			files: []string{"../shared/check.sh"},
+			want:  invalid(apperr.NewProblem(apperr.PathInvalid, "check", "path", "../shared/check.sh")),
+		},
+		{
+			name: "check missing",
+			yaml: "version: 1\ncheck: check.sh\n" + theoryBlocks,
+			want: invalid(apperr.NewProblem(apperr.PathNotFound, "check", "path", "check.sh")),
+		},
+		{
+			name:  "control outside the activity folder",
+			yaml:  "version: 1\ncontrols:\n  - {label: Up, script: ../up.sh}\n" + theoryBlocks,
+			files: []string{"../up.sh"},
+			want:  invalid(apperr.NewProblem(apperr.PathInvalid, "controls[0].script", "path", "../up.sh")),
+		},
+		{
+			name:  "file outside the activity folder",
+			yaml:  "version: 1\nfiles:\n  - path: ../other/data.csv\n" + theoryBlocks,
+			files: []string{"../other/data.csv"},
+			want:  invalid(apperr.NewProblem(apperr.PathInvalid, "files[0].path", "path", "../other/data.csv")),
+		},
+		{
+			name: "file missing",
+			yaml: "version: 1\nfiles:\n  - path: data.csv\n" + theoryBlocks,
+			want: invalid(apperr.NewProblem(apperr.PathNotFound, "files[0].path", "path", "data.csv")),
+		},
+		{
+			name:  "file as a string",
+			yaml:  "version: 1\nfiles:\n  - data.csv\n" + theoryBlocks,
+			files: []string{"data.csv"},
+			want:  invalid(apperr.NewProblem(apperr.WrongType, "files[0]", "want", "object", "got", "string")),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := writeActivity(t, tt.yaml, tt.files...)
+
+			a, err := ParseWorkshopActivity(root, "basics", "hello")
+			if err == nil {
+				t.Fatalf("ParseWorkshopActivity = %+v, want an error", a)
+			}
+			if got := appErr(t, err); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("error = %+v\nwant %+v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestParseActivityProblems(t *testing.T) {
 	const quiz = "version: 1\ntype: quiz\n" + theoryBlocks
 	const coding = "version: 1\ntype: coding\n" + theoryBlocks

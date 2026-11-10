@@ -183,7 +183,7 @@ func TestTree(t *testing.T) {
 	}
 
 	// A fresh enrollment: only the first activity is available.
-	want := Tree{Title: "Go Basics", Current: "hello", Sections: []TreeSection{
+	want := Tree{Title: "Go Basics", Type: manifest.ContentCourse, Current: "hello", Sections: []TreeSection{
 		{Slug: "basics", Title: "Basics", Activities: []TreeActivity{{Slug: "hello", Title: "Hello"}}},
 		{Slug: "more", Title: "More", Activities: []TreeActivity{
 			{Slug: "loops", Title: "loops", Locked: true}, {Slug: "maps", Title: "maps", Locked: true},
@@ -211,7 +211,7 @@ func TestTreeMarks(t *testing.T) {
 		t.Fatalf("Tree: %v", err)
 	}
 
-	want := Tree{Title: "Go Basics", Current: "a3", Sections: []TreeSection{
+	want := Tree{Title: "Go Basics", Type: manifest.ContentCourse, Current: "a3", Sections: []TreeSection{
 		{Slug: "basics", Title: "Basics", Activities: []TreeActivity{
 			{Slug: "a1", Title: "A1", Completed: true}, {Slug: "a2", Title: "A2", Completed: true},
 		}},

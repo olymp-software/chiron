@@ -38,16 +38,40 @@ export function ListCourses() {
   return window['go']['main']['App']['ListCourses']();
 }
 
+export function OpenFolder(arg1) {
+  return window['go']['main']['App']['OpenFolder'](arg1);
+}
+
 export function PickFolder(arg1) {
   return window['go']['main']['App']['PickFolder'](arg1);
+}
+
+export function StartActivityCheck(arg1, arg2) {
+  return window['go']['main']['App']['StartActivityCheck'](arg1, arg2);
 }
 
 export function StartCheck(arg1) {
   return window['go']['main']['App']['StartCheck'](arg1);
 }
 
+export function StartControl(arg1, arg2, arg3) {
+  return window['go']['main']['App']['StartControl'](arg1, arg2, arg3);
+}
+
 export function StartCourse() {
   return window['go']['main']['App']['StartCourse']();
+}
+
+export function StartWorkshopControl(arg1, arg2) {
+  return window['go']['main']['App']['StartWorkshopControl'](arg1, arg2);
+}
+
+export function StopActivityRuns(arg1) {
+  return window['go']['main']['App']['StopActivityRuns'](arg1);
+}
+
+export function StopRun(arg1) {
+  return window['go']['main']['App']['StopRun'](arg1);
 }
 
 export function SyncCourse(arg1) {

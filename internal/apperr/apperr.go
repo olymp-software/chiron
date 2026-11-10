@@ -16,6 +16,7 @@ const (
 	// Course manifest or activity.yaml as a whole; file is the course-relative
 	// path.
 	ManifestMissing          Code = "manifestMissing"
+	ManifestConflict         Code = "manifestConflict"
 	ManifestInvalid          Code = "manifestInvalid"
 	UnsupportedSchemaVersion Code = "unsupportedSchemaVersion"
 	YAMLSyntax               Code = "yamlSyntax"
@@ -66,6 +67,12 @@ const (
 	CheckRunning    Code = "checkRunning"
 	CheckReadFailed Code = "checkReadFailed"
 
+	// Workshops and their scripts.
+	FileCopyFailed       Code = "fileCopyFailed"
+	WorkshopFolderFailed Code = "workshopFolderFailed"
+	ScriptRunning        Code = "scriptRunning"
+	ScriptStartFailed    Code = "scriptStartFailed"
+
 	// Internal is a failure that is a bug in the app; details are in the log.
 	Internal Code = "internal"
 )
@@ -73,6 +80,7 @@ const (
 // All lists every code, in declaration order.
 var All = []Code{
 	ManifestMissing,
+	ManifestConflict,
 	ManifestInvalid,
 	UnsupportedSchemaVersion,
 	YAMLSyntax,
@@ -110,6 +118,10 @@ var All = []Code{
 	CheckRequired,
 	CheckRunning,
 	CheckReadFailed,
+	FileCopyFailed,
+	WorkshopFolderFailed,
+	ScriptRunning,
+	ScriptStartFailed,
 	Internal,
 }
 

@@ -40,13 +40,13 @@ func (l *Library) AddLocal(path string) (Entry, error) {
 	if err != nil {
 		return Entry{}, err
 	}
-	c, err := manifest.ParseCourse(newDir)
+	c, err := manifest.Parse(newDir)
 	if err != nil {
 		l.removeAll(newDir)
 		return Entry{}, err
 	}
 
-	e := Entry{Origin: OriginLocal, Source: src, Key: key, Title: c.Title}
+	e := Entry{Origin: OriginLocal, Source: src, Key: key, Title: c.Title, Type: c.Type}
 	err = l.update(func(f *libraryFile) error {
 		for _, other := range f.Courses {
 			if other.Key == key {
@@ -85,9 +85,9 @@ func (l *Library) findSame(src string) (Entry, bool, error) {
 }
 
 // Sync replaces the course copy of a local-folder course with a fresh copy of
-// its folder. The new copy is not validated; the stored title is updated only
-// if its course.yaml is valid. If the folder cannot be copied, the copy is
-// left unchanged.
+// its folder. The new copy is not validated; the stored title and content type
+// are updated only if its manifest is valid. If the folder cannot be copied,
+// the copy is left unchanged.
 func (l *Library) Sync(key string) (Entry, error) {
 	e, err := l.entry(key)
 	if err != nil {
@@ -104,13 +104,14 @@ func (l *Library) Sync(key string) (Entry, error) {
 	// Windows. It is stopped only now, so a failed copy leaves it running; the
 	// course lock keeps a new one from starting.
 	l.StopCheck(e.Key)
+	l.runs.stopCourse(e.Key)
 	if err := l.swap(newDir, e.Key); err != nil {
 		l.removeAll(newDir)
 		return Entry{}, err
 	}
 	l.log.Info("course synced", "source", e.Source, "key", e.Key)
 
-	c, err := manifest.ParseCourse(l.CopyPath(e.Key))
+	c, err := manifest.Parse(l.CopyPath(e.Key))
 	if err != nil {
 		return e, nil
 	}
@@ -123,13 +124,14 @@ func (l *Library) Sync(key string) (Entry, error) {
 			l.log.Error("reconcile progress after sync", "key", e.Key, "err", err)
 		}
 	}
-	if c.Title == e.Title {
+	if c.Title == e.Title && c.Type == e.Type {
 		return e, nil
 	}
 	err = l.update(func(f *libraryFile) error {
 		for i := range f.Courses {
 			if f.Courses[i].Key == e.Key {
 				f.Courses[i].Title = c.Title
+				f.Courses[i].Type = c.Type
 				e = f.Courses[i]
 			}
 		}
@@ -177,12 +179,15 @@ func (l *Library) swap(newDir, key string) error {
 	return nil
 }
 
-// recover repairs course copies after an interrupted swap: a course whose
+// Recover repairs course copies after an interrupted swap: a course whose
 // copy is missing gets back its newest moved-aside copy, and every leftover
-// new or old copy is deleted. It also deletes the skeleton's smoke folder.
-// With an unreadable library.json nothing is repaired; List reports the error.
-func (l *Library) recover() error {
+// new or old copy is deleted. It also deletes the skeleton's smoke folder and
+// every TEMP_DIR. It must run once, before anything runs, in the only app
+// instance using the data folder. With an unreadable library.json nothing is
+// repaired; List reports the error.
+func (l *Library) Recover() error {
 	l.removeAll(filepath.Join(l.dataDir, "smoke"))
+	l.removeAll(filepath.Join(l.dataDir, tempDir))
 	courses, err := l.List()
 	if err != nil {
 		l.log.Error("course copies not repaired", "err", err)
