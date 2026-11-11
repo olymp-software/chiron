@@ -1,8 +1,8 @@
-# course-library Specification
+# library Specification
 
 ## Purpose
 
-Defines the library of added courses, the course overview from which the learner checks the environment and enrolls, enrollment itself, and which screen the app opens on startup, after adding a course and on entering a course.
+Defines the library of added library items (courses and workshops), the course overview from which the learner checks the environment and enrolls, enrollment itself, and which screen the app opens on startup, after adding a course and on entering a course.
 
 ## Requirements
 

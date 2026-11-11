@@ -120,6 +120,21 @@ func (s *Store) Update(key string, change func(p Progress) Progress) (Progress, 
 	return next, nil
 }
 
+// Delete deletes the progress of the course with key, ending its enrollment.
+// A course without progress is not an error.
+func (s *Store) Delete(key string) error {
+	unlock := s.lock(key)
+	defer unlock()
+	if err := os.Remove(s.path(key)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		s.log.Error("delete progress", "key", key, "err", err)
+		return apperr.New(apperr.ProgressWriteFailed)
+	}
+	return nil
+}
+
+// Path returns the progress file of the course with key.
+func (s *Store) Path(key string) string { return s.path(key) }
+
 func (s *Store) save(key string, p Progress) error {
 	p.Version = formatVersion
 	if p.Completed == nil {

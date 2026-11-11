@@ -1,8 +1,8 @@
-# course-manifest Specification
+# manifest Specification
 
 ## Purpose
 
-Defines the layout of a course repository, the `course.yaml` course manifest, slugs, rules shared by all course files, and how file schemas are versioned.
+Defines the layout of a course repository, the `course.yaml` course manifest, slugs, rules shared by all course files, and how file schemas are versioned. The workshop specification adds `workshop.yaml` and its differences.
 
 ## Requirements
 

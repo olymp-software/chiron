@@ -46,6 +46,10 @@ export function PickFolder(arg1) {
   return window['go']['main']['App']['PickFolder'](arg1);
 }
 
+export function RemoveCourse(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RemoveCourse'](arg1, arg2, arg3);
+}
+
 export function StartActivityCheck(arg1, arg2) {
   return window['go']['main']['App']['StartActivityCheck'](arg1, arg2);
 }

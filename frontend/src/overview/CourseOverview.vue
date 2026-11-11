@@ -15,6 +15,7 @@ import ErrorView from '../errors/ErrorView.vue'
 import { courseImages } from '../markdown/images'
 import MarkdownView from '../markdown/MarkdownView.vue'
 import CheckModal from './CheckModal.vue'
+import RemoveDialog from './RemoveDialog.vue'
 
 const props = defineProps<{ courseKey: string }>()
 
@@ -29,6 +30,8 @@ const enrolling = ref(false)
 const checking = ref(false)
 // control is the index of the workshop control running in the modal.
 const control = ref<number>()
+// removing is true while the removal dialog is open.
+const removing = ref(false)
 
 // blocked is true while Enroll and Continue are unavailable: the course is
 // broken or its environment check has not passed for the current check file.
@@ -77,6 +80,11 @@ async function enroll() {
   }
 }
 
+function removeFailed(e: apperr.Error) {
+  removing.value = false
+  error.value = e
+}
+
 onMounted(load)
 </script>
 
@@ -123,6 +131,11 @@ onMounted(load)
           {{ $t('overview.enroll') }}
         </button>
       </div>
+      <div class="removal">
+        <button class="remove" :disabled="syncing || enrolling" @click="removing = true">
+          {{ $t('remove.button') }}
+        </button>
+      </div>
       <p v-if="overview.completed" class="completed" role="status">
         {{ $t('overview.completed') }}
       </p>
@@ -142,6 +155,15 @@ onMounted(load)
         :start="() => StartWorkshopControl(courseKey, control ?? 0)"
         :cancel="StopRun"
         @closed="control = undefined"
+      />
+      <RemoveDialog
+        v-if="removing"
+        :course-key="courseKey"
+        :title="overview.title"
+        :workshop="overview.type === 'workshop'"
+        @cancel="removing = false"
+        @failed="removeFailed"
+        @removed="router.replace('/library')"
       />
     </template>
     <ErrorView v-if="error" :error="error" />
@@ -192,6 +214,10 @@ dl {
 dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.removal {
+  display: flex;
 }
 
 .check-status,

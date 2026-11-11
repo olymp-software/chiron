@@ -432,6 +432,39 @@ func TestRecoverDeletesSmokeFolder(t *testing.T) {
 	}
 }
 
+func TestRecoverDeletesOrphanCopies(t *testing.T) {
+	l, dataDir := newLib(t)
+	e := addLocal(t, l, courseFolder(t, "Go Basics"))
+	orphan := "removed-0000"
+	writeFile(t, filepath.Join(dataDir, coursesDir, orphan, manifest.CourseFile), "")
+	state := statePath(dataDir, orphan)
+	writeFile(t, state, `{"version": 1, "current": "hello", "completed": []}`)
+	learner := filepath.Join(l.WorkshopFolder(orphan), "mine")
+	writeFile(t, learner, "mine")
+
+	openLib(t, dataDir)
+
+	if names := courseEntries(t, dataDir); len(names) != 1 || names[0] != e.Key {
+		t.Errorf("courses folder = %v, want only %s", names, e.Key)
+	}
+	if !exists(state) || !exists(learner) {
+		t.Error("kept progress or learner folder deleted")
+	}
+}
+
+func TestRecoverUnreadableLibraryDeletesNothing(t *testing.T) {
+	dataDir := t.TempDir()
+	writeFile(t, filepath.Join(dataDir, fileName), "{")
+	copyFile := filepath.Join(dataDir, coursesDir, "go-basics-0000", manifest.CourseFile)
+	writeFile(t, copyFile, "")
+
+	openLib(t, dataDir)
+
+	if !exists(copyFile) {
+		t.Error("course copy deleted with an unreadable library.json")
+	}
+}
+
 // 5.5 List and Overview
 
 func TestListDoesNotReadCourses(t *testing.T) {

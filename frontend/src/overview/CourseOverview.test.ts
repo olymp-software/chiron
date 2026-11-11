@@ -5,6 +5,7 @@ import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import {
   CourseOverview as LoadOverview,
+  RemoveCourse,
   StartWorkshopControl,
   SyncCourse,
 } from '../../wailsjs/go/main/App'
@@ -14,6 +15,7 @@ import en from '../i18n/en.json'
 import CourseOverview from './CourseOverview.vue'
 
 vi.mock('../../wailsjs/go/main/App', () => ({
+  RemoveCourse: vi.fn(),
   CancelCheck: vi.fn(),
   StopRun: vi.fn(),
   CourseOverview: vi.fn(),
@@ -45,10 +47,15 @@ beforeEach(() => {
   vi.resetAllMocks()
 })
 
+let router: ReturnType<typeof createRouter>
+
 async function mountOverview() {
-  const router = createRouter({
+  router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/', component: { render: () => null } }],
+    routes: [
+      { path: '/', component: { render: () => null } },
+      { path: '/library', component: { render: () => null } },
+    ],
   })
   const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } })
   const w = mount(CourseOverview, {
@@ -148,4 +155,84 @@ it('updates the completed status after Sync', async () => {
 
   expect(w.find('[role=status]').exists()).toBe(false)
   expect(buttons(w)).toEqual(['Sync', 'Continue'])
+})
+
+function brokenCourse() {
+  const res = overview(false)
+  res.overview.enrolled = false
+  res.overview.error = { code: 'manifestInvalid', params: {} } as never
+  return res
+}
+
+it.each([
+  ['a course', () => overview(false)],
+  ['a workshop', () => workshop()],
+  ['a course with a broken manifest', brokenCourse],
+])('offers Remove for %s', async (_, res) => {
+  loadOverview.mockResolvedValue(res())
+
+  const w = await mountOverview()
+
+  expect(w.get('.remove').text()).toBe('Remove')
+})
+
+async function confirmRemoval(w: Awaited<ReturnType<typeof mountOverview>>) {
+  await w.get('.remove').trigger('click')
+  await w.get('dialog input[name=keepProgress]').setValue(true)
+  await w.get('dialog .confirm').trigger('click')
+  await flushPromises()
+}
+
+it('removes and replaces the overview with the library', async () => {
+  HTMLDialogElement.prototype.showModal = vi.fn()
+  HTMLDialogElement.prototype.close = vi.fn()
+  loadOverview.mockResolvedValue(overview(false))
+  vi.mocked(RemoveCourse).mockResolvedValue(main.RemoveResult.createFrom({ left: [] }))
+  const w = await mountOverview()
+  const replace = vi.spyOn(router, 'replace')
+  const push = vi.spyOn(router, 'push')
+
+  await confirmRemoval(w)
+
+  expect(RemoveCourse).toHaveBeenCalledExactlyOnceWith('go-1', true, false)
+  expect(replace).toHaveBeenCalledExactlyOnceWith('/library')
+  expect(push).not.toHaveBeenCalled()
+})
+
+it('shows the paths left before leaving', async () => {
+  HTMLDialogElement.prototype.showModal = vi.fn()
+  HTMLDialogElement.prototype.close = vi.fn()
+  loadOverview.mockResolvedValue(workshop())
+  vi.mocked(RemoveCourse).mockResolvedValue(
+    main.RemoveResult.createFrom({ left: ['C:\\learner\\go-1'] }),
+  )
+  const w = await mountOverview()
+  const replace = vi.spyOn(router, 'replace')
+
+  await confirmRemoval(w)
+
+  expect(w.get('dialog .left').text()).toBe('C:\\learner\\go-1')
+  expect(replace).not.toHaveBeenCalled()
+
+  await w.get('dialog .actions button').trigger('click')
+  await flushPromises()
+
+  expect(replace).toHaveBeenCalledExactlyOnceWith('/library')
+})
+
+it('shows a removal error and stays', async () => {
+  HTMLDialogElement.prototype.showModal = vi.fn()
+  HTMLDialogElement.prototype.close = vi.fn()
+  loadOverview.mockResolvedValue(overview(false))
+  vi.mocked(RemoveCourse).mockResolvedValue(
+    main.RemoveResult.createFrom({ left: [], error: { code: 'libraryWriteFailed', params: {} } }),
+  )
+  const w = await mountOverview()
+  const replace = vi.spyOn(router, 'replace')
+
+  await confirmRemoval(w)
+
+  expect(w.find('dialog').exists()).toBe(false)
+  expect(w.text()).toContain(en.errors.libraryWriteFailed)
+  expect(replace).not.toHaveBeenCalled()
 })
