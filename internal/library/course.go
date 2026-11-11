@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -180,11 +181,14 @@ func (l *Library) swap(newDir, key string) error {
 }
 
 // Recover repairs course copies after an interrupted swap: a course whose
-// copy is missing gets back its newest moved-aside copy, and every leftover
-// new or old copy is deleted. It also deletes the skeleton's smoke folder and
-// every TEMP_DIR. It must run once, before anything runs, in the only app
-// instance using the data folder. With an unreadable library.json nothing is
-// repaired; List reports the error.
+// copy is missing gets back its newest moved-aside copy. Then everything in
+// the courses folder that is not the copy of a library item is deleted:
+// leftover new or old copies and copies a removal left. It also deletes the
+// skeleton's smoke folder and every TEMP_DIR. Progress and learner folders of
+// removed items are kept, as they may have been kept on purpose. It must run
+// once, before anything runs, in the only app instance using the data folder.
+// With an unreadable library.json nothing is repaired or deleted in the
+// courses folder; List reports the error.
 func (l *Library) Recover() error {
 	l.removeAll(filepath.Join(l.dataDir, "smoke"))
 	l.removeAll(filepath.Join(l.dataDir, tempDir))
@@ -215,8 +219,10 @@ func (l *Library) Recover() error {
 		l.log.Error("read courses folder", "err", err)
 		return apperr.New(apperr.LibraryReadFailed)
 	}
+	// What is not a course copy of a library item is a new or old copy of an
+	// interrupted swap or the copy of a removal that could not delete it.
 	for _, e := range entries {
-		if strings.Contains(e.Name(), newSuffix) || strings.Contains(e.Name(), oldSuffix) {
+		if !slices.ContainsFunc(courses, func(c Entry) bool { return c.Key == e.Name() }) {
 			l.removeAll(filepath.Join(l.coursesPath(), e.Name()))
 		}
 	}

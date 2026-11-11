@@ -246,16 +246,25 @@ func (l *Library) newTempDir(key string) (string, error) {
 // exited from it stays locked for a moment on Windows, so the delete is
 // retried as a rename is; what is left then goes on the next start.
 func (l *Library) removeTemp(temp string) {
+	if err := removeRetrying(temp); err != nil {
+		l.log.Error("remove temp folder", "path", temp, "err", err)
+	}
+}
+
+// removeRetrying deletes path with everything in it, retrying while the OS
+// reports something in it busy, as rename does. A missing path is not an
+// error.
+func removeRetrying(path string) error {
 	var err error
 	for i := range renameAttempts {
-		if err = os.RemoveAll(temp); err == nil {
-			return
+		if err = os.RemoveAll(path); err == nil {
+			return nil
 		}
 		if i < renameAttempts-1 {
 			time.Sleep(renameDelay)
 		}
 	}
-	l.log.Error("remove temp folder", "path", temp, "err", err)
+	return err
 }
 
 // checkEnv is the inherited environment without the variables the app sets

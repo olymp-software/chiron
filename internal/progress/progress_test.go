@@ -100,6 +100,38 @@ func TestMissingProgress(t *testing.T) {
 	wantCode(t, err, apperr.NotEnrolled)
 }
 
+func TestDelete(t *testing.T) {
+	s, dir := newStore(t)
+	if err := s.Enroll("go-1", "hello"); err != nil {
+		t.Fatalf("Enroll: %v", err)
+	}
+	if err := s.Enroll("go-2", "hello"); err != nil {
+		t.Fatalf("Enroll: %v", err)
+	}
+
+	if err := s.Delete("go-1"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	if ok, err := s.Exists("go-1"); err != nil || ok {
+		t.Errorf("Exists = %v, %v, want false", ok, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "go-1.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("stat progress file: %v, want not exist", err)
+	}
+	if ok, err := s.Exists("go-2"); err != nil || !ok {
+		t.Errorf("Exists(go-2) = %v, %v, want true", ok, err)
+	}
+}
+
+func TestDeleteMissingProgress(t *testing.T) {
+	s, _ := newStore(t)
+
+	if err := s.Delete("go-1"); err != nil {
+		t.Errorf("Delete: %v, want nil", err)
+	}
+}
+
 func TestCorruptProgress(t *testing.T) {
 	s, dir := newStore(t)
 	writeFile(t, filepath.Join(dir, "go-1.json"), "{")

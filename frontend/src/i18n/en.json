@@ -25,6 +25,31 @@
     "confirm": "Add",
     "cancel": "Cancel"
   },
+  "remove": {
+    "button": "Remove",
+    "title": {
+      "course": "Remove the course “{title}”?",
+      "workshop": "Remove the workshop “{title}”?"
+    },
+    "text": {
+      "course": "Its running scripts are stopped, and the course is removed from the library together with its copy and the environment check result.",
+      "workshop": "Its running scripts are stopped, and the workshop is removed from the library together with its copy and the environment check result. Whatever the workshop created outside its folder stays as it is."
+    },
+    "keepProgress": "Keep progress",
+    "keepFiles": {
+      "course": "Keep my files",
+      "workshop": "Keep my files (the workshop folder)"
+    },
+    "cancel": "Cancel",
+    "confirm": "Remove",
+    "removing": "Removing…",
+    "leftTitle": "Some files are left on disk",
+    "leftText": {
+      "course": "The course is removed from the library, but these paths could not be deleted, probably because another program uses them. Close it and delete them yourself.",
+      "workshop": "The workshop is removed from the library, but these paths could not be deleted, probably because another program uses them. Close it and delete them yourself."
+    },
+    "ok": "OK"
+  },
   "callout": {
     "note": "Note",
     "tip": "Tip",

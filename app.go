@@ -165,6 +165,34 @@ func (a *App) SyncCourse(key string) CourseResult {
 	return CourseResult{Course: e, Error: a.coded(err)}
 }
 
+// RemoveResult is the paths left on disk by a removal, or the error that
+// prevented it; with an error nothing was removed.
+type RemoveResult struct {
+	Left  []string      `json:"left"`
+	Error *apperr.Error `json:"error,omitempty"`
+}
+
+// RemoveCourse removes a library item, keeping its progress and its learner
+// folders or workshop folder if asked. The library item is removed even if
+// some of its files are left on disk. A removed course entered last is
+// forgotten, so a re-added one is not entered on startup.
+func (a *App) RemoveCourse(key string, keepProgress, keepFiles bool) RemoveResult {
+	left, err := a.lib.Remove(key, keepProgress, keepFiles)
+	if err != nil {
+		return RemoveResult{Left: []string{}, Error: a.coded(err)}
+	}
+	if a.settings.Get().LastCourse == key {
+		if err := a.settings.Update(func(st *settings.Settings) {
+			if st.LastCourse == key {
+				st.LastCourse = ""
+			}
+		}); err != nil {
+			a.log.Error("forget course entered last", "key", key, "err", err)
+		}
+	}
+	return RemoveResult{Left: left}
+}
+
 // CourseOverview returns the course overview of a course in the library.
 func (a *App) CourseOverview(key string) OverviewResult {
 	o, err := a.lib.Overview(key)

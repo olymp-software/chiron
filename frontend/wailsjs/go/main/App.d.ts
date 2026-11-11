@@ -24,6 +24,8 @@ export function OpenFolder(arg1:string):Promise<main.ErrorResult>;
 
 export function PickFolder(arg1:string):Promise<string>;
 
+export function RemoveCourse(arg1:string,arg2:boolean,arg3:boolean):Promise<main.RemoveResult>;
+
 export function StartActivityCheck(arg1:string,arg2:string):Promise<main.StartCheckResult>;
 
 export function StartCheck(arg1:string):Promise<main.StartCheckResult>;
