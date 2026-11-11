@@ -50,4 +50,6 @@ Frontend (`frontend/src`): `router.ts` (vue-router) switches between `library/Li
 
 Requirements live in `openspec/specs/<capability>/spec.md`; work is done as changes in `openspec/changes/<name>/` (proposal, design, delta specs, tasks), archived to `openspec/changes/archive/` when done. Use the `opsx:*` / `openspec-*` skills. Write all OpenSpec artifacts in English.
 
+`docs/authoring.md` is the Author guide: everything Authors can write and what their scripts can rely on, as the app supports it now, plus a "Not yet available" list of specified but unimplemented features. Any change to Author-facing behavior (file formats, schemas, Markdown dialect, script runtime and environment, how activities look and behave) updates it in the same change: describe only what is implemented, and move items out of "Not yet available" when they ship. If the guide and the specs disagree, the specs win.
+
 `openspec/config.yaml` defines the domain glossary (Learner, Author, Course source, Course copy, Storage key, Local-folder course, Sync, Activity, Theory block, …) with words to avoid (e.g. "user"/"student" → Learner, "lesson" → Activity, "course id" → Course source / Storage key). Follow it in code, comments, UI strings and specs.

@@ -1,5 +1,9 @@
 schema: spec-driven
 
+rules:
+  tasks:
+    - If the change affects what Authors write or what their scripts can rely on (file formats, schemas, Markdown, script runtime, activity behavior), include a task to update docs/authoring.md, describing only what the change implements.
+
 context: |
   Product: a local desktop app for taking interactive IT courses (programming, DevOps, tooling, any IT topic).
   Authors publish courses as git repositories; the app downloads a course, renders its content and runs the
