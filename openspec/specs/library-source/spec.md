@@ -1,8 +1,8 @@
-# course-source Specification
+# library-source Specification
 
 ## Purpose
 
-Defines where the app gets a course from, how it tells courses apart, how the learner picks a course version, and how courses are added to and removed from the library.
+Defines where the app gets a library item (course or workshop) from, how it tells library items apart, how the learner picks a course version, and how library items are added to and removed from the library.
 
 ## Requirements
 
