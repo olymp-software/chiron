@@ -47,15 +47,15 @@ Each question SHALL have a "Check" button, unavailable while no option is select
 - **THEN** the selection does not change
 
 ### Requirement: Correct options are highlighted
-After a question is checked, the app SHALL mark every correct option as correct, whether selected or not, and every selected incorrect option as incorrect.
+After a question is checked, the app SHALL highlight every correct option, whether selected or not, and SHALL put a verdict icon only on selected options: correct or incorrect. A correct option the learner did not select SHALL be highlighted without an icon. Each mark SHALL also be available as text to screen readers.
 
 #### Scenario: Wrong single choice
 - **WHEN** the learner selects an incorrect option of a question with `multiple: false` and checks it
-- **THEN** the selected option is marked incorrect and the correct option is marked correct
+- **THEN** the selected option has the incorrect icon and no highlight, and the correct option is highlighted without an icon
 
 #### Scenario: Missed option
 - **WHEN** two options are correct and the learner selects only one of them and checks
-- **THEN** both correct options are marked correct and the answer is incorrect
+- **THEN** both correct options are highlighted, only the selected one has the correct icon, and the answer is incorrect
 
 ### Requirement: Question map
 The quiz screen SHALL show a question map with one icon per question, in order. Each icon SHALL show whether the question is unchecked, answered correctly or answered incorrectly; the open question SHALL be marked. Selecting an icon SHALL open its question, in any order.

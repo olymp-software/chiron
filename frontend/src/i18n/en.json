@@ -83,6 +83,26 @@
     "leaveCancel": "Stay",
     "leaveConfirm": "Stop and leave"
   },
+  "quiz": {
+    "start": "Start quiz",
+    "back": "Back to quiz",
+    "theory": "Theory",
+    "startOver": "Start over",
+    "map": "Questions",
+    "mapUnchecked": "Question {n}: not answered",
+    "mapCorrect": "Question {n}: answered correctly",
+    "mapIncorrect": "Question {n}: answered incorrectly",
+    "counter": "Correct: {correct} of {total}",
+    "position": "Question {n} of {total}",
+    "check": "Check",
+    "correct": "Correct",
+    "incorrect": "Incorrect",
+    "chosenCorrect": "Your choice, correct",
+    "chosenIncorrect": "Your choice, incorrect",
+    "missed": "Correct option, not selected",
+    "previous": "Previous question",
+    "nextQuestion": "Next question"
+  },
   "errors": {
     "manifestMissing": "The folder has neither course.yaml nor workshop.yaml in its root.",
     "manifestConflict": "The folder has both course.yaml and workshop.yaml in its root. Keep only one.",

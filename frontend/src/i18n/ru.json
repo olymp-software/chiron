@@ -83,6 +83,26 @@
     "leaveCancel": "Остаться",
     "leaveConfirm": "Остановить и уйти"
   },
+  "quiz": {
+    "start": "Начать квиз",
+    "back": "Вернуться к квизу",
+    "theory": "Теория",
+    "startOver": "Начать заново",
+    "map": "Вопросы",
+    "mapUnchecked": "Вопрос {n}: нет ответа",
+    "mapCorrect": "Вопрос {n}: ответ верный",
+    "mapIncorrect": "Вопрос {n}: ответ неверный",
+    "counter": "Верно: {correct} из {total}",
+    "position": "Вопрос {n} из {total}",
+    "check": "Проверить",
+    "correct": "Верно",
+    "incorrect": "Неверно",
+    "chosenCorrect": "Ваш выбор, верно",
+    "chosenIncorrect": "Ваш выбор, неверно",
+    "missed": "Верный вариант, не выбран",
+    "previous": "Предыдущий вопрос",
+    "nextQuestion": "Следующий вопрос"
+  },
   "errors": {
     "manifestMissing": "В корне папки нет ни course.yaml, ни workshop.yaml.",
     "manifestConflict": "В корне папки есть и course.yaml, и workshop.yaml. Оставьте один из них.",
