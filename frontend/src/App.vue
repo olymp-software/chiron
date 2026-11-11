@@ -22,22 +22,34 @@ const locales: Locale[] = ['en', 'ru']
         </button>
       </div>
     </header>
+    <!-- main scrolls, not the window, so the header stays in view; a screen
+         that fills the page (the course screen) scrolls its own parts. -->
     <main>
-      <!-- Keyed by the course so that switching courses reloads the screen. -->
-      <RouterView v-slot="{ Component, route }">
-        <component :is="Component" :key="String(route.params.key ?? '')" />
-      </RouterView>
+      <div class="page">
+        <!-- Keyed by the course so that switching courses reloads the screen. -->
+        <RouterView v-slot="{ Component, route }">
+          <component :is="Component" :key="String(route.params.key ?? '')" />
+        </RouterView>
+      </div>
     </main>
   </div>
 </template>
 
 <style scoped>
 .app {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
+  height: 100vh;
+}
+
+header,
+.page {
+  box-sizing: border-box;
+  width: 100%;
   max-width: 960px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0 1rem;
 }
 
 header {
@@ -45,6 +57,22 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  padding-top: 1rem;
+}
+
+main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* A screen taller than the page overflows it and main scrolls; the course
+   screen takes exactly the page height. */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 1rem;
 }
 
 .app-title {

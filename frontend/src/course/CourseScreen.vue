@@ -67,8 +67,13 @@ async function switchCourse(e: Event) {
 </template>
 
 <style scoped>
+/* The screen fills the page; the course tree and the activity scroll
+   separately so the header and the other column stay in view. */
 .course {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: 1rem;
 }
 
@@ -86,7 +91,20 @@ select {
 .body {
   display: grid;
   grid-template-columns: minmax(12rem, 1fr) 3fr;
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
   gap: 1rem;
-  align-items: start;
+}
+
+/* Root elements of the tree and the activity carry this scope id. They keep
+   their content height, capped by the row: a stretched grid root would
+   share the extra height among its rows and grow its buttons. */
+.body > * {
+  align-self: start;
+  max-height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 </style>
