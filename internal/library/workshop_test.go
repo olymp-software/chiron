@@ -34,7 +34,27 @@ func TestMain(m *testing.M) {
 		}
 		select {}
 	}
-	os.Exit(m.Run())
+	os.Exit(runIsolated(m))
+}
+
+// runIsolated runs the tests with an empty global git configuration and no
+// system one, so the machine's git settings do not affect them.
+func runIsolated(m *testing.M) int {
+	dir, err := os.MkdirTemp("", "library-test-git")
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+	global := filepath.Join(dir, "gitconfig")
+	if err := os.WriteFile(global, nil, 0o644); err != nil {
+		panic(err)
+	}
+	for k, v := range map[string]string{"GIT_CONFIG_GLOBAL": global, "GIT_CONFIG_NOSYSTEM": "1", "GIT_SSH_COMMAND": ""} {
+		if err := os.Setenv(k, v); err != nil {
+			panic(err)
+		}
+	}
+	return m.Run()
 }
 
 const workshopTheory = "theory_blocks:\n  - kind: markdown\n    data: {content: '# Hi'}\n"

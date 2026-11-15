@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/olymp-software/chiron/internal/apperr"
+	"github.com/olymp-software/chiron/internal/git"
 	"github.com/olymp-software/chiron/internal/platform"
 	"github.com/olymp-software/chiron/internal/progress"
 )
@@ -50,11 +51,13 @@ type Entry struct {
 
 // Course is a course in the library list. Enrolled and Completed are not
 // stored in library.json: a course is enrolled exactly when it has progress,
-// and its progress tells whether it is completed.
+// and its progress tells whether it is completed. Outdated tells that a
+// repository course has a locally known version higher than its selected one.
 type Course struct {
 	Entry
 	Enrolled  bool `json:"enrolled"`
 	Completed bool `json:"completed"`
+	Outdated  bool `json:"outdated"`
 }
 
 type libraryFile struct {
@@ -70,6 +73,8 @@ type Library struct {
 	learnerRoot string
 	log         *slog.Logger
 	progress    *progress.Store
+	// git runs git for repository courses.
+	git *git.Git
 
 	// mu serializes reads and writes of library.json.
 	mu sync.Mutex
@@ -86,7 +91,13 @@ type Library struct {
 // Open opens the library in dataDir, with workshop folders under learnerRoot.
 // Recover must run before the library is used.
 func Open(dataDir, learnerRoot string, log *slog.Logger) (*Library, error) {
-	l := &Library{dataDir: dataDir, learnerRoot: learnerRoot, log: log, checks: map[string]*check{}}
+	l := &Library{
+		dataDir:     dataDir,
+		learnerRoot: learnerRoot,
+		log:         log,
+		git:         git.New(filepath.Join(dataDir, hooksDir), log),
+		checks:      map[string]*check{},
+	}
 	if err := os.MkdirAll(l.coursesPath(), 0o755); err != nil {
 		log.Error("create courses folder", "err", err)
 		return nil, apperr.New(apperr.LibraryWriteFailed)
@@ -100,7 +111,8 @@ func Open(dataDir, learnerRoot string, log *slog.Logger) (*Library, error) {
 }
 
 // Courses returns the added courses with their stored titles, enrollment and
-// completion.
+// completion, and whether repository courses are on the latest known version.
+// The repositories are not contacted.
 func (l *Library) Courses() ([]Course, error) {
 	entries, err := l.List()
 	if err != nil {
@@ -110,6 +122,9 @@ func (l *Library) Courses() ([]Course, error) {
 	for i, e := range entries {
 		courses[i] = Course{Entry: e}
 		courses[i].Enrolled, courses[i].Completed = l.enrollment(e.Key)
+		if e.Origin == OriginRepo {
+			courses[i].Outdated = l.outdated(e)
+		}
 	}
 	return courses, nil
 }

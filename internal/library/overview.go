@@ -1,6 +1,7 @@
 package library
 
 import (
+	"context"
 	"errors"
 
 	"github.com/olymp-software/chiron/internal/apperr"
@@ -19,7 +20,12 @@ type Overview struct {
 	// course.yaml), CheckNotChecked, CheckPassed or CheckChanged.
 	Check string `json:"check"`
 	// Controls are the labels of the workshop controls of an enrolled workshop.
-	Controls []string      `json:"controls,omitempty"`
+	Controls []string `json:"controls,omitempty"`
+	// Version is the selected version of a repository course, "" if no
+	// version points at its checked-out commit or the clone cannot be read;
+	// Versions are its locally known versions, highest first.
+	Version  string        `json:"version"`
+	Versions []string      `json:"versions"`
 	Error    *apperr.Error `json:"error,omitempty"`
 }
 
@@ -30,8 +36,15 @@ func (l *Library) Overview(key string) (Overview, error) {
 	if err != nil {
 		return Overview{}, err
 	}
-	o := Overview{Entry: e}
+	o := Overview{Entry: e, Versions: []string{}}
 	o.Enrolled, o.Completed = l.enrollment(e.Key)
+	if e.Origin == OriginRepo {
+		if v, all, err := l.versions(context.Background(), e.Key); err != nil {
+			l.log.Warn("read course versions", "key", e.Key, "err", err)
+		} else {
+			o.Version, o.Versions = v, all
+		}
+	}
 	root := l.CopyPath(e.Key)
 	c, err := manifest.Parse(root)
 	if err == nil {

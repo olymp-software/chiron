@@ -10,8 +10,11 @@ import LibraryView from './LibraryView.vue'
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   AddLocalCourse: vi.fn(),
+  AddRepoCourse: vi.fn(),
+  CancelStep: vi.fn(),
   ListCourses: vi.fn(),
   PickFolder: vi.fn(),
+  RemoteVersions: vi.fn(),
 }))
 
 function course(key: string, enrolled: boolean, completed: boolean) {
@@ -56,12 +59,39 @@ it('hides a section without entries', async () => {
   expect(sections(w)).toEqual([['Workshops', ['k8s']]])
 })
 
-it('adds from a folder and names neither kind when empty', async () => {
+it('adds from a folder or a repository and names neither kind when empty', async () => {
   const w = await mountLibrary([])
 
   expect(sections(w)).toEqual([])
-  expect(w.get('.heading button').text()).toBe('Add from folder')
+  expect(w.findAll('.heading button').map((b) => b.text())).toEqual([
+    'Add from folder',
+    'Add from repository',
+  ])
   expect(w.text()).toContain('Add a course or a workshop')
+})
+
+it('opens the repository dialog', async () => {
+  HTMLDialogElement.prototype.showModal = vi.fn()
+  const w = await mountLibrary([])
+
+  await w.findAll('.heading button')[1].trigger('click')
+
+  expect(w.get('dialog h2').text()).toBe('Add from repository')
+})
+
+it('marks a course not on the latest version', async () => {
+  const w = await mountLibrary([
+    { ...course('old', true, false), origin: 'repo', outdated: true },
+    { ...course('latest', true, false), origin: 'repo', outdated: false },
+  ])
+
+  const outdated = (title: string) =>
+    w
+      .findAll('.course')
+      .find((c) => c.text().startsWith(title))
+      ?.find('.outdated')
+  expect(outdated('old')?.text()).toBe('Newer version available')
+  expect(outdated('latest')?.exists()).toBe(false)
 })
 
 it('marks enrolled and completed courses', async () => {

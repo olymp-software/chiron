@@ -70,7 +70,7 @@ Two bound methods instead of one, because the version choice and script warning 
    - `manifest.Parse`; invalid → delete the folder, return the course error;
    - rename into `<courses>/<key>` and append the entry inside `update`, exactly like `AddLocal`.
    Any failure or cancel deletes the `.new-` folder; an app exit leaves it to `Recover`.
-3. `App.CancelAdd()` cancels the context of the running add. One add runs at a time (the dialog is modal), so the App keeps a single cancel func under a mutex.
+3. `App.CancelStep(stepID)` cancels the step with the id the UI passed to `RemoteVersions` or `AddRepoCourse` (and `CheckVersions`, decision 5). A Cancel that reaches Go before its step starts is remembered and cancels the step as soon as it starts. (Implemented after review; the first version was `CancelAdd()` with a single cancel func, which lost a Cancel that arrived before the step.)
 
 ### 4. Selected version and versions are read from the clone
 
@@ -90,7 +90,7 @@ A shared helper in `internal/library` (or `internal/git`) parses and orders vers
 2. Subtract the locally known tags.
 3. `git fetch --no-tags origin refs/tags/vA:refs/tags/vA …` for the missing ones only, without `+`.
 
-Existing tags are never named in a refspec, so they cannot move, whatever the git version and its clobber rules. This removes the reason for the minimum git version 2.20 discussed during exploration; no version check is needed. The same step fills the tags during add. It does not touch the worktree, so it does not take the course lock against running scripts, but it holds the lock to serialize with switch and Sync-like operations.
+Existing tags are never named in a refspec, so they cannot move, whatever the git version and its clobber rules. This removes the reason for the minimum git version 2.20 discussed during exploration; no version check is needed. The same step fills the tags during add. It does not touch the worktree and git locks the refs it writes, so it takes no course lock: a check waiting on a slow network must not block opening activities, running scripts or removal. It is cancellable like the add steps (`CancelStep` with a step id from the UI), and closing the course overview cancels it.
 
 ### 6. Version switch in place
 
@@ -104,11 +104,11 @@ In place rather than a copy-and-swap like Sync: git already writes only changed 
 
 ### 7. Repair on startup
 
-`Recover`, after the existing steps, runs `git reset --hard -q` and `git clean -ffdx` in every repository course copy that exists. A clone interrupted mid-checkout either still has the old HEAD (back to the old version) or the new one (finished), in both cases with exactly that commit's files. No git → logged and skipped; the course still opens.
+`SwitchVersion` writes the marker `.git/chiron-switching` in the clone (atomically, synced) before the checkout and removes it only after checkout, clean and refresh all succeeded; `.git` is untouched by checkout and clean. `Recover`, after the existing steps, runs `git reset --hard -q` and `git clean -ffdx` only in clones that have the marker, then refreshes title, type and progress and removes the marker. A clone interrupted mid-checkout either still has the old HEAD (back to the old version) or the new one (finished), in both cases with exactly that commit's files. Clones without the marker are not touched, so a normal start runs no git and files scripts left in a clone survive. No git → logged and skipped, the marker stays for the next start; the course still opens. (Changed after review; the first version repaired every clone on every start.)
 
 ### 8. Removal and Windows read-only files
 
-`Remove` and `Recover` already delete course copies with `os.RemoveAll`. git writes pack files and loose objects read-only, which `DeleteFile` refuses on Windows. The delete helper clears the read-only attribute and retries on Windows; covered by a Windows test that removes a real clone.
+`Remove` and `Recover` already delete course copies with `os.RemoveAll`. git writes pack files and loose objects read-only, which `DeleteFile` refuses on Windows. Go's `os.Remove` on Windows already clears the read-only attribute and retries, so no helper of our own is needed; a test that removes a real clone after `git gc` pins this on Windows.
 
 ### 9. Frontend
 
@@ -118,16 +118,18 @@ In place rather than a copy-and-swap like Sync: git already writes only changed 
 - `LibraryView` shows a "newer version available" mark from `Outdated`.
 - New i18n strings in `en.json` and `ru.json`, including messages for the new error codes.
 
-### 10. Removing go-git
+### 10. Removing the go-git spike
 
-`internal/source/source.go` (`CloneTags`) and its test are deleted, `go mod tidy` drops go-git and its dependencies. The package comment moves to another file of `internal/source`.
+`internal/source/source.go` (`CloneTags`) and its test are deleted, `go mod tidy` drops the dependencies only the spike needed (transport, ssh, crypto). The package comment moves to another file of `internal/source`.
+
+go-git itself stays: `source.CopyLocal` uses `plumbing/format/gitignore` to skip files excluded by `.gitignore` when copying a local folder, and that package pulls in only go-billy and gcfg. *Alternatives:* standalone gitignore libraries are either unmaintained for years (sabhiram, denormal, monochromegane) or new with almost no users (git-pkgs/gitignore, bep/gogitignore); go-git's package is maintained and widely copied (e.g. by fluxcd).
 
 ## Risks / Trade-offs
 
 - [stderr classification breaks on a future git or ssh wording change] → `LC_ALL=C` fixes the language; unknown messages fall back to `GitFailed` with the raw output, so the learner still sees what happened. Unit tests pin the patterns with captured real outputs.
 - [Git Credential Manager may still try a console prompt in some configurations and fail instead of showing a window] → `GIT_TERMINAL_PROMPT=0` makes it fail fast as `RepoAccessDenied`; checked manually on Windows with GCM.
 - [Appending `-o BatchMode=yes` to a learner's custom ssh command that is not OpenSSH (e.g. plink)] → plink rejects the option and git fails with `GitFailed` showing the output; acceptable for v1, noted in the docs.
-- [`Recover` now runs two git processes per repository course on every start] → They are fast on a clean worktree; if startup time becomes visible, only courses whose switch did not finish could be marked in `library.json` later.
+- [A failed marker write blocks the switch] → The learner sees an error and the clone is unchanged; better than a switch that a crash could leave half-done without repair.
 - [Two git calls per repository course on every library load] → Fine for tens of courses; can be cached in memory per process later without spec changes.
 - [The clone contains `.git`, which course files could reference] → The image handler serves only images inside the copy, and nothing reads `.git` as course content; manifest paths into `.git` are not specially rejected.
 - [Courses that rely on LFS silently show pointer files] → Documented for Authors; the clone is the same on every machine.

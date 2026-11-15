@@ -37,11 +37,25 @@ type App struct {
 	runIDs atomic.Int64
 	// stops holds the stop function of each running script by run id.
 	stops sync.Map
+
+	// stepsMu guards the cancellable steps that contact a repository:
+	// listing versions, cloning and checking for new versions. steps holds
+	// the cancel function of each running step by the step id the UI gave
+	// it; cancelled holds the ids of steps cancelled before they started.
+	stepsMu   sync.Mutex
+	steps     map[string]context.CancelFunc
+	cancelled map[string]bool
 }
 
 // NewApp creates the bound App.
 func NewApp(lib *library.Library, st *settings.Store, log *slog.Logger) *App {
-	return &App{lib: lib, settings: st, log: log}
+	return &App{
+		lib:       lib,
+		settings:  st,
+		log:       log,
+		steps:     map[string]context.CancelFunc{},
+		cancelled: map[string]bool{},
+	}
 }
 
 // startup is called when the app starts; the context is kept for runtime calls.
@@ -157,6 +171,123 @@ func (a *App) PickFolder(title string) string {
 func (a *App) AddLocalCourse(path string) CourseResult {
 	e, err := a.lib.AddLocal(path)
 	return CourseResult{Course: e, Error: a.coded(err)}
+}
+
+// RemoteVersionsResult is the course versions of a repository about to be
+// added, the existing entry of a repository already in the library, or the
+// error that prevented listing them. Cancelled tells that CancelStep stopped
+// the listing.
+type RemoteVersionsResult struct {
+	Remote    library.Remote `json:"remote"`
+	Cancelled bool           `json:"cancelled"`
+	Error     *apperr.Error  `json:"error,omitempty"`
+}
+
+// AddRepoResult is the added course or the error that prevented adding it.
+// Cancelled tells that CancelStep stopped the add; nothing was added then.
+type AddRepoResult struct {
+	Course    library.Entry `json:"course"`
+	Cancelled bool          `json:"cancelled"`
+	Error     *apperr.Error `json:"error,omitempty"`
+}
+
+// CheckVersionsResult is the course versions a check for new versions found,
+// highest first, or the error that prevented the check. Cancelled tells that
+// CancelStep stopped the check.
+type CheckVersionsResult struct {
+	New       []string      `json:"new"`
+	Cancelled bool          `json:"cancelled"`
+	Error     *apperr.Error `json:"error,omitempty"`
+}
+
+// RemoteVersions lists the course versions of the repository at addr. An
+// address of a course already in the library returns its entry without
+// contacting the repository. CancelStep with the same step id stops it.
+func (a *App) RemoteVersions(addr, stepID string) RemoteVersionsResult {
+	ctx, done := a.startStep(stepID)
+	defer done()
+	r, err := a.lib.RemoteVersions(ctx, addr)
+	if errors.Is(err, context.Canceled) {
+		return RemoteVersionsResult{Remote: library.Remote{Versions: []string{}}, Cancelled: true}
+	}
+	if err != nil {
+		return RemoteVersionsResult{Remote: library.Remote{Versions: []string{}}, Error: a.coded(err)}
+	}
+	return RemoteVersionsResult{Remote: r}
+}
+
+// AddRepoCourse clones the repository source at version and adds it; the
+// learner has already confirmed the script warning. CancelStep with the same
+// step id stops it.
+func (a *App) AddRepoCourse(source, version, stepID string) AddRepoResult {
+	ctx, done := a.startStep(stepID)
+	defer done()
+	e, err := a.lib.AddRepo(ctx, source, version)
+	if errors.Is(err, context.Canceled) {
+		return AddRepoResult{Cancelled: true}
+	}
+	return AddRepoResult{Course: e, Error: a.coded(err)}
+}
+
+// CancelStep stops the RemoteVersions, AddRepoCourse or CheckVersions step
+// with the step id. The calls may arrive in either order: a step cancelled
+// before it started is cancelled as soon as it starts.
+func (a *App) CancelStep(stepID string) ErrorResult {
+	if stepID == "" {
+		return ErrorResult{}
+	}
+	a.stepsMu.Lock()
+	defer a.stepsMu.Unlock()
+	if cancel, ok := a.steps[stepID]; ok {
+		cancel()
+		return ErrorResult{}
+	}
+	a.cancelled[stepID] = true
+	return ErrorResult{}
+}
+
+// startStep returns the context of the step with the id, which CancelStep
+// cancels, and the function to call when the step is over. Step ids are
+// unique, so an id cancelled after its step ended is never reused; such ids
+// are kept until the app exits, a few strings at most.
+func (a *App) startStep(stepID string) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	a.stepsMu.Lock()
+	a.steps[stepID] = cancel
+	if a.cancelled[stepID] {
+		delete(a.cancelled, stepID)
+		cancel()
+	}
+	a.stepsMu.Unlock()
+	return ctx, func() {
+		cancel()
+		a.stepsMu.Lock()
+		defer a.stepsMu.Unlock()
+		delete(a.steps, stepID)
+	}
+}
+
+// SwitchVersion checks out another locally known version of a repository
+// course, stopping its scripts first.
+func (a *App) SwitchVersion(key, version string) CourseResult {
+	e, err := a.lib.SwitchVersion(context.Background(), key, version)
+	return CourseResult{Course: e, Error: a.coded(err)}
+}
+
+// CheckVersions fetches the course versions of a repository course that the
+// app does not know yet; the selected version does not change. CancelStep
+// with the same step id stops it.
+func (a *App) CheckVersions(key, stepID string) CheckVersionsResult {
+	ctx, done := a.startStep(stepID)
+	defer done()
+	found, err := a.lib.CheckVersions(ctx, key)
+	if errors.Is(err, context.Canceled) {
+		return CheckVersionsResult{New: []string{}, Cancelled: true}
+	}
+	if err != nil {
+		return CheckVersionsResult{New: []string{}, Error: a.coded(err)}
+	}
+	return CheckVersionsResult{New: found}
 }
 
 // SyncCourse refreshes the course copy of a local-folder course.

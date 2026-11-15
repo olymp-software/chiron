@@ -31,6 +31,9 @@ function message(item: { code: string; params?: Record<string, string> }): strin
         ><span v-if="p.path">: </span>{{ message(p) }}
       </li>
     </ul>
+    <pre v-if="error.code === 'gitFailed' && error.params?.output" class="output">{{
+      error.params.output
+    }}</pre>
     <button v-if="newerAppCodes.includes(error.code)" @click="BrowserOpenURL(releasesURL)">
       {{ t('app.releases') }}
     </button>
@@ -44,6 +47,12 @@ function message(item: { code: string; params?: Record<string, string> }): strin
 
 .error p {
   margin: 0;
+}
+
+.error .output {
+  margin: 0.5rem 0 0;
+  white-space: pre-wrap;
+  color: inherit;
 }
 
 .error ul {

@@ -259,6 +259,7 @@ export namespace library {
 	    checkHash?: string;
 	    enrolled: boolean;
 	    completed: boolean;
+	    outdated: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Course(source);
@@ -274,6 +275,7 @@ export namespace library {
 	        this.checkHash = source["checkHash"];
 	        this.enrolled = source["enrolled"];
 	        this.completed = source["completed"];
+	        this.outdated = source["outdated"];
 	    }
 	}
 	export class Entry {
@@ -311,6 +313,8 @@ export namespace library {
 	    text: manifest.OverviewText;
 	    check: string;
 	    controls?: string[];
+	    version: string;
+	    versions: string[];
 	    error?: apperr.Error;
 	
 	    static createFrom(source: any = {}) {
@@ -330,6 +334,8 @@ export namespace library {
 	        this.text = this.convertValues(source["text"], manifest.OverviewText);
 	        this.check = source["check"];
 	        this.controls = source["controls"];
+	        this.version = source["version"];
+	        this.versions = source["versions"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	
@@ -353,6 +359,40 @@ export namespace library {
 	}
 	
 	
+	export class Remote {
+	    source: string;
+	    versions: string[];
+	    existing?: Entry;
+	
+	    static createFrom(source: any = {}) {
+	        return new Remote(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source = source["source"];
+	        this.versions = source["versions"];
+	        this.existing = this.convertValues(source["existing"], Entry);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	export class TreeActivity {
 	    slug: string;
@@ -464,6 +504,74 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.activity = this.convertValues(source["activity"], library.Activity);
+	        this.error = this.convertValues(source["error"], apperr.Error);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AddRepoResult {
+	    course: library.Entry;
+	    cancelled: boolean;
+	    error?: apperr.Error;
+	
+	    static createFrom(source: any = {}) {
+	        return new AddRepoResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.course = this.convertValues(source["course"], library.Entry);
+	        this.cancelled = source["cancelled"];
+	        this.error = this.convertValues(source["error"], apperr.Error);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CheckVersionsResult {
+	    new: string[];
+	    cancelled: boolean;
+	    error?: apperr.Error;
+	
+	    static createFrom(source: any = {}) {
+	        return new CheckVersionsResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.new = source["new"];
+	        this.cancelled = source["cancelled"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	
@@ -656,6 +764,40 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.overview = this.convertValues(source["overview"], library.Overview);
+	        this.error = this.convertValues(source["error"], apperr.Error);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class RemoteVersionsResult {
+	    remote: library.Remote;
+	    cancelled: boolean;
+	    error?: apperr.Error;
+	
+	    static createFrom(source: any = {}) {
+	        return new RemoteVersionsResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.remote = this.convertValues(source["remote"], library.Remote);
+	        this.cancelled = source["cancelled"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	
