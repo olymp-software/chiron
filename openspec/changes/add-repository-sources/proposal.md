@@ -38,4 +38,4 @@ None.
 - Frontend: the library gets "Add from repository" with an address/version/warning dialog; the course overview gets the version selector and "Check for new versions".
 - `go.mod`: go-git and its dependencies removed.
 - No change to the `library.json` format (`origin: "repo"` already exists) or to progress files.
-- Author-facing rules for future Author documentation (there is none in the repository yet): Git LFS and submodules are not supported; never move a released tag, release a new version instead.
+- `docs/authoring.md`: publishing from a git repository (versions as `vX.Y.Z` tags, never move a released tag, no Git LFS or submodules, private repositories), "Repository courses and course versions" leaves "Not yet available".
