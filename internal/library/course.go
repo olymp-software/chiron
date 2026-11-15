@@ -191,9 +191,9 @@ func (l *Library) swap(newDir, key string) error {
 // the courses folder that is not the copy of a library item is deleted:
 // leftover new or old copies and copies a removal left. It also deletes the
 // skeleton's smoke folder and every TEMP_DIR. Progress and learner folders of
-// removed items are kept, as they may have been kept on purpose. Finally the
-// clone of every repository course is reset to its checked-out commit, which
-// repairs an interrupted version switch. It must run
+// removed items are kept, as they may have been kept on purpose. Finally a
+// repository clone whose version switch did not finish is reset to its
+// checked-out commit. It must run
 // once, before anything runs, in the only app instance using the data folder.
 // With an unreadable library.json nothing is repaired or deleted in the
 // courses folder; List reports the error.

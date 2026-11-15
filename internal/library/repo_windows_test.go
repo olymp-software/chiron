@@ -32,4 +32,7 @@ func TestSwitchVersionWithFileHeldOpen(t *testing.T) {
 	if c := courseOf(t, l, e.Key); c.Title != "Go v2" {
 		t.Errorf("stored title = %q, want Go v2", c.Title)
 	}
+	if !exists(switchMarker(l.CopyPath(e.Key))) {
+		t.Error("switch marker removed, want the next start to finish the clean")
+	}
 }

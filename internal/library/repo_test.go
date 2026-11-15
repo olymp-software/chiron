@@ -631,24 +631,67 @@ func TestCheckVersionsLocalFolderCourse(t *testing.T) {
 
 // 6.4 Repair on startup
 
-func TestRecoverRepairsClone(t *testing.T) {
+// interruptSwitch leaves the clone of key as a switch to v1.1.0 interrupted
+// after the checkout would: the marker is set, HEAD is at v1.1.0, a file
+// holds content of neither version and an untracked file is left.
+func interruptSwitch(t *testing.T, r *testRepo, l *Library, key string) {
+	t.Helper()
+	dir := l.CopyPath(key)
+	writeFile(t, switchMarker(dir), "v1.1.0\n")
+	r.Git(dir, "checkout", "-q", "--detach", "v1.1.0")
+	writeFile(t, filepath.Join(dir, manifest.CourseFile), "half-written")
+	writeFile(t, filepath.Join(dir, "untracked.txt"), "x")
+}
+
+func TestSwitchVersionRemovesMarker(t *testing.T) {
+	r := newTestRepo(t)
+	l, _ := newLib(t)
+	e := addRepo(t, l, r.URL, "v1.0.0")
+
+	switchVersion(t, l, e.Key, "v1.1.0")
+
+	if exists(switchMarker(l.CopyPath(e.Key))) {
+		t.Error("switch marker left after a finished switch")
+	}
+}
+
+func TestRecoverRepairsInterruptedSwitch(t *testing.T) {
 	r := newTestRepo(t)
 	l, dataDir := newLib(t)
 	e := addRepo(t, l, r.URL, "v1.0.0")
+	interruptSwitch(t, r, l, e.Key)
 	dir := l.CopyPath(e.Key)
-	writeFile(t, filepath.Join(dir, manifest.CourseFile), "edited")
-	writeFile(t, filepath.Join(dir, "untracked.txt"), "x")
 
 	l = openLib(t, dataDir)
 
-	if got := readFile(t, filepath.Join(dir, manifest.CourseFile)); got != courseYAML("Go v1") {
-		t.Errorf("course.yaml = %q, want the committed one", got)
+	if got := readFile(t, filepath.Join(dir, manifest.CourseFile)); got != twoActivitiesYAML("Go v2") {
+		t.Errorf("course.yaml = %q, want the one of v1.1.0", got)
 	}
 	if exists(filepath.Join(dir, "untracked.txt")) {
 		t.Error("untracked file survived")
 	}
-	if o := overview(t, l, e.Key); o.Version != "v1.0.0" {
-		t.Errorf("version = %q, want v1.0.0", o.Version)
+	if exists(switchMarker(dir)) {
+		t.Error("switch marker survived the repair")
+	}
+	if o := overview(t, l, e.Key); o.Version != "v1.1.1" || o.Title != "Go v2" {
+		t.Errorf("overview version %q title %q, want v1.1.1 and Go v2", o.Version, o.Title)
+	}
+}
+
+// Only an unfinished switch is repaired: files scripts left in a clone
+// survive a restart, and starting runs no git.
+func TestRecoverLeavesFinishedClones(t *testing.T) {
+	r := newTestRepo(t)
+	l, dataDir := newLib(t)
+	e := addRepo(t, l, r.URL, "v1.0.0")
+	left := filepath.Join(l.CopyPath(e.Key), "left-by-script.txt")
+	writeFile(t, left, "x")
+	noGit(t)
+
+	openLib(t, dataDir)
+
+	if !exists(left) {
+		t.Error("file in a clone without a switch marker deleted on startup")
 	}
 }
 
@@ -656,7 +699,7 @@ func TestRecoverWithoutGit(t *testing.T) {
 	r := newTestRepo(t)
 	l, dataDir := newLib(t)
 	e := addRepo(t, l, r.URL, "v1.0.0")
-	writeFile(t, filepath.Join(l.CopyPath(e.Key), "untracked.txt"), "x")
+	interruptSwitch(t, r, l, e.Key)
 	orphan := filepath.Join(dataDir, coursesDir, "orphan-0123abcd")
 	writeFile(t, filepath.Join(orphan, "file"), "x")
 	noGit(t)
@@ -666,8 +709,12 @@ func TestRecoverWithoutGit(t *testing.T) {
 	if exists(orphan) {
 		t.Error("orphan copy not deleted")
 	}
-	if !exists(filepath.Join(l.CopyPath(e.Key), "untracked.txt")) {
+	dir := l.CopyPath(e.Key)
+	if !exists(filepath.Join(dir, "untracked.txt")) {
 		t.Error("clone changed without git")
+	}
+	if !exists(switchMarker(dir)) {
+		t.Error("switch marker removed without a repair")
 	}
 }
 

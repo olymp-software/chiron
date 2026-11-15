@@ -13,6 +13,7 @@ import (
 	"github.com/olymp-software/chiron/internal/apperr"
 	"github.com/olymp-software/chiron/internal/git"
 	"github.com/olymp-software/chiron/internal/manifest"
+	"github.com/olymp-software/chiron/internal/platform"
 	"github.com/olymp-software/chiron/internal/source"
 )
 
@@ -253,6 +254,13 @@ func (l *Library) SwitchVersion(ctx context.Context, key, version string) (Entry
 	}
 	l.StopCheck(e.Key)
 	l.runs.stopCourse(e.Key)
+	// The marker stays until the switch has finished, so Recover repairs a
+	// clone whose switch was interrupted or failed half-way.
+	marker := switchMarker(dir)
+	if err := platform.WriteFileAtomic(marker, []byte(version+"\n"), 0o644); err != nil {
+		l.log.Error("write version switch marker", "key", e.Key, "err", err)
+		return Entry{}, apperr.New(apperr.CopyFailed, "path", dir)
+	}
 	if _, err := l.git.Run(ctx, dir, "checkout", "-q", "--force", "--detach", tagsPrefix+version); err != nil {
 		return Entry{}, err
 	}
@@ -264,7 +272,20 @@ func (l *Library) SwitchVersion(ctx context.Context, key, version string) (Entry
 	if err != nil {
 		return refreshed, err
 	}
-	return refreshed, cleanErr
+	if cleanErr != nil {
+		return refreshed, cleanErr
+	}
+	if err := os.Remove(marker); err != nil {
+		l.log.Error("remove version switch marker", "key", e.Key, "err", err)
+	}
+	return refreshed, nil
+}
+
+// switchMarker returns the path of the file that marks a version switch in
+// progress in the clone in dir. It lives in .git, where neither checkout nor
+// clean touches it.
+func switchMarker(dir string) string {
+	return filepath.Join(dir, ".git", "chiron-switching")
 }
 
 // CheckVersions fetches the course versions of a repository course that are
@@ -305,17 +326,20 @@ func (l *Library) repoEntry(key string) (Entry, error) {
 	return e, nil
 }
 
-// repairClones brings the clone of every repository course back to its
-// checked-out commit, so an interrupted version switch leaves no files of two
-// versions. Without git it is skipped.
+// repairClones brings the clone of every repository course whose version
+// switch did not finish back to its checked-out commit, so it holds no files
+// of two versions, and refreshes its title, type and progress. Clones without
+// the switch marker are not touched. Without git the repair is skipped and
+// the marker kept for the next start.
 func (l *Library) repairClones(courses []Entry) {
 	ctx := context.Background()
 	for _, c := range courses {
-		dir := l.CopyPath(c.Key)
 		if c.Origin != OriginRepo {
 			continue
 		}
-		if _, err := os.Stat(dir); err != nil {
+		dir := l.CopyPath(c.Key)
+		marker := switchMarker(dir)
+		if _, err := os.Stat(marker); err != nil {
 			continue
 		}
 		_, err := l.git.Run(ctx, dir, "reset", "-q", "--hard")
@@ -329,7 +353,15 @@ func (l *Library) repairClones(courses []Entry) {
 		}
 		if err != nil {
 			l.log.Error("repair course clone", "key", c.Key, "err", err)
+			continue
 		}
+		if _, err := l.refresh(c); err != nil {
+			l.log.Error("refresh repaired course", "key", c.Key, "err", err)
+		}
+		if err := os.Remove(marker); err != nil {
+			l.log.Error("remove version switch marker", "key", c.Key, "err", err)
+		}
+		l.log.Info("course clone repaired", "key", c.Key)
 	}
 }
 

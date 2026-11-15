@@ -104,7 +104,7 @@ In place rather than a copy-and-swap like Sync: git already writes only changed 
 
 ### 7. Repair on startup
 
-`Recover`, after the existing steps, runs `git reset --hard -q` and `git clean -ffdx` in every repository course copy that exists. A clone interrupted mid-checkout either still has the old HEAD (back to the old version) or the new one (finished), in both cases with exactly that commit's files. No git → logged and skipped; the course still opens.
+`SwitchVersion` writes the marker `.git/chiron-switching` in the clone (atomically, synced) before the checkout and removes it only after checkout, clean and refresh all succeeded; `.git` is untouched by checkout and clean. `Recover`, after the existing steps, runs `git reset --hard -q` and `git clean -ffdx` only in clones that have the marker, then refreshes title, type and progress and removes the marker. A clone interrupted mid-checkout either still has the old HEAD (back to the old version) or the new one (finished), in both cases with exactly that commit's files. Clones without the marker are not touched, so a normal start runs no git and files scripts left in a clone survive. No git → logged and skipped, the marker stays for the next start; the course still opens. (Changed after review; the first version repaired every clone on every start.)
 
 ### 8. Removal and Windows read-only files
 
@@ -129,7 +129,7 @@ go-git itself stays: `source.CopyLocal` uses `plumbing/format/gitignore` to skip
 - [stderr classification breaks on a future git or ssh wording change] → `LC_ALL=C` fixes the language; unknown messages fall back to `GitFailed` with the raw output, so the learner still sees what happened. Unit tests pin the patterns with captured real outputs.
 - [Git Credential Manager may still try a console prompt in some configurations and fail instead of showing a window] → `GIT_TERMINAL_PROMPT=0` makes it fail fast as `RepoAccessDenied`; checked manually on Windows with GCM.
 - [Appending `-o BatchMode=yes` to a learner's custom ssh command that is not OpenSSH (e.g. plink)] → plink rejects the option and git fails with `GitFailed` showing the output; acceptable for v1, noted in the docs.
-- [`Recover` now runs two git processes per repository course on every start] → They are fast on a clean worktree; if startup time becomes visible, only courses whose switch did not finish could be marked in `library.json` later.
+- [A failed marker write blocks the switch] → The learner sees an error and the clone is unchanged; better than a switch that a crash could leave half-done without repair.
 - [Two git calls per repository course on every library load] → Fine for tens of courses; can be cached in memory per process later without spec changes.
 - [The clone contains `.git`, which course files could reference] → The image handler serves only images inside the copy, and nothing reads `.git` as course content; manifest paths into `.git` are not specially rejected.
 - [Courses that rely on LFS silently show pointer files] → Documented for Authors; the clone is the same on every machine.

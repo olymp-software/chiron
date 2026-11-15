@@ -408,8 +408,12 @@ A tag the app already knows SHALL keep the commit it had when the app first fetc
 - **THEN** `v1.2.0` in the clone still points at the commit it pointed at before and the course content is unchanged
 
 ### Requirement: Interrupted version switch is repaired
-On startup the app SHALL bring the clone of every repository course back to its checked-out commit, discarding local changes and untracked files. If git is not available, the repair SHALL be skipped and logged.
+On startup the app SHALL bring the clone of every repository course whose version switch did not finish back to its checked-out commit, discarding local changes and untracked files, and update the stored title, content type and progress from it. Clones whose last switch finished SHALL NOT be touched on startup. If git is not available, the repair SHALL be skipped, logged and retried on the next start.
 
 #### Scenario: Files from two versions
 - **WHEN** a version switch was interrupted and left files of two versions in the clone
 - **THEN** after the next start the clone holds exactly the files of its checked-out commit
+
+#### Scenario: No switch in progress
+- **WHEN** the app starts and no version switch of a repository course was interrupted
+- **THEN** the app does not run git and the clones are unchanged

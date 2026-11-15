@@ -531,7 +531,7 @@ A course or workshop is published as a git repository with `course.yaml` or `wor
 | scp-like ssh | `git@gitlab.example.com:team/course.git` |
 | GitHub shorthand | `github.com/owner/course` (means https) |
 
-`http://`, `git://` and `file://` are not accepted. An https and an ssh address of one repository are two different courses with separate progress, and so is a fork. Spelling differences (case, a trailing `.git` or `/`) don't make a different course.
+`http://`, `git://` and `file://` are not accepted. An scp-like address is read as `ssh://user@host/path`, so its path counts from the server's root, not from the user's home folder: this makes no difference on GitHub, GitLab and similar services, but on your own server give the full path, e.g. `ssh://dev@myserver/home/dev/repos/course.git`. An https and an ssh address of one repository are two different courses with separate progress, and so is a fork. Spelling differences (case, a trailing `.git` or `/`) don't make a different course.
 
 **Versions are tags.** A course version is a git tag `vX.Y.Z` with no leading zeros, e.g. `v1.0.0`, `v1.10.2`. Every other tag, including pre-release tags like `v2.0.0-beta.1`, is ignored; branches are never used. A repository without a `vX.Y.Z` tag can't be added. The Learner picks the version when adding (the highest is preselected) and can switch to any known version, older or newer, in the course overview. Switching stops the course's scripts; the Learner's folders and progress are kept, and an activity that is new in the picked version is not completed.
 
