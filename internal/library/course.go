@@ -111,7 +111,13 @@ func (l *Library) Sync(key string) (Entry, error) {
 		return Entry{}, err
 	}
 	l.log.Info("course synced", "source", e.Source, "key", e.Key)
+	return l.refresh(e)
+}
 
+// refresh brings the progress and the stored title and content type of e in
+// line with its course copy after Sync or a version switch. A copy with an
+// invalid manifest changes nothing.
+func (l *Library) refresh(e Entry) (Entry, error) {
 	c, err := manifest.Parse(l.CopyPath(e.Key))
 	if err != nil {
 		return e, nil
@@ -122,7 +128,7 @@ func (l *Library) Sync(key string) (Entry, error) {
 		if _, err := l.progress.Update(e.Key, func(p progress.Progress) progress.Progress {
 			return progress.Resolve(slugs, p)
 		}); err != nil {
-			l.log.Error("reconcile progress after sync", "key", e.Key, "err", err)
+			l.log.Error("reconcile progress", "key", e.Key, "err", err)
 		}
 	}
 	if c.Title == e.Title && c.Type == e.Type {
@@ -185,7 +191,9 @@ func (l *Library) swap(newDir, key string) error {
 // the courses folder that is not the copy of a library item is deleted:
 // leftover new or old copies and copies a removal left. It also deletes the
 // skeleton's smoke folder and every TEMP_DIR. Progress and learner folders of
-// removed items are kept, as they may have been kept on purpose. It must run
+// removed items are kept, as they may have been kept on purpose. Finally the
+// clone of every repository course is reset to its checked-out commit, which
+// repairs an interrupted version switch. It must run
 // once, before anything runs, in the only app instance using the data folder.
 // With an unreadable library.json nothing is repaired or deleted in the
 // courses folder; List reports the error.
@@ -226,6 +234,7 @@ func (l *Library) Recover() error {
 			l.removeAll(filepath.Join(l.coursesPath(), e.Name()))
 		}
 	}
+	l.repairClones(courses)
 	return nil
 }
 

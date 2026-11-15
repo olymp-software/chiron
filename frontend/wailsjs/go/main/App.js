@@ -10,8 +10,20 @@ export function AddLocalCourse(arg1) {
   return window['go']['main']['App']['AddLocalCourse'](arg1);
 }
 
+export function AddRepoCourse(arg1, arg2) {
+  return window['go']['main']['App']['AddRepoCourse'](arg1, arg2);
+}
+
+export function CancelAdd() {
+  return window['go']['main']['App']['CancelAdd']();
+}
+
 export function CancelCheck(arg1) {
   return window['go']['main']['App']['CancelCheck'](arg1);
+}
+
+export function CheckVersions(arg1) {
+  return window['go']['main']['App']['CheckVersions'](arg1);
 }
 
 export function CompleteActivity(arg1, arg2) {
@@ -46,6 +58,10 @@ export function PickFolder(arg1) {
   return window['go']['main']['App']['PickFolder'](arg1);
 }
 
+export function RemoteVersions(arg1) {
+  return window['go']['main']['App']['RemoteVersions'](arg1);
+}
+
 export function RemoveCourse(arg1, arg2, arg3) {
   return window['go']['main']['App']['RemoveCourse'](arg1, arg2, arg3);
 }
@@ -76,6 +92,10 @@ export function StopActivityRuns(arg1) {
 
 export function StopRun(arg1) {
   return window['go']['main']['App']['StopRun'](arg1);
+}
+
+export function SwitchVersion(arg1, arg2) {
+  return window['go']['main']['App']['SwitchVersion'](arg1, arg2);
 }
 
 export function SyncCourse(arg1) {

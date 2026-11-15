@@ -1,3 +1,5 @@
+// Package source handles course sources: normalizing local folders and
+// repository addresses, deriving storage keys and copying local folders.
 package source
 
 import (
@@ -24,11 +26,15 @@ func Key(source string) string {
 // label returns the last segment of source, lowercased, with every run of
 // characters outside [a-z0-9] replaced by "-", trimmed of "-" and cut to 32
 // characters. Both / and \ separate segments, so Windows paths give the same
-// label on every OS.
+// label on every OS. A repository source's segment loses a trailing .git.
 func label(source string) string {
 	segment := strings.TrimRight(source, `/\`)
 	if i := strings.LastIndexAny(segment, `/\`); i >= 0 {
 		segment = segment[i+1:]
+	}
+	if isRepoSource(source) && len(segment) > len(gitSuffix) &&
+		strings.EqualFold(segment[len(segment)-len(gitSuffix):], gitSuffix) {
+		segment = segment[:len(segment)-len(gitSuffix)]
 	}
 	var b strings.Builder
 	dash := false

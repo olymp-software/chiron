@@ -14,7 +14,7 @@ Authors publish courses as git repositories, but the app can only add a course f
 - The course copy is a full clone. The selected version is the `vX.Y.Z` tag at HEAD (the highest one when several point at it). Switching versions in the course overview stops the course's scripts and checks out the tag, discarding any local changes; an interrupted switch is repaired on startup.
 - **BREAKING (spec)**: tags are no longer fetched when a course opens. The course overview gets a "Check for new versions" button; nothing else touches the network after adding. Tags already known to the app are never replaced, even if the Author moves a tag.
 - The library marks a repository course whose selected version is not the latest tag known locally.
-- Remove the go-git spike (`source.CloneTags`) and the go-git dependency.
+- Remove the go-git spike (`source.CloneTags`). go-git stays only for its `.gitignore` matcher used when copying local folders.
 
 ## Capabilities
 
@@ -36,6 +36,6 @@ None.
 - `internal/apperr`: new codes (git not found, invalid address, access denied, repository unreachable, no versions, version not found, git failed), messages in `en.json` and `ru.json`.
 - `app.go`: new bound methods for listing remote versions, adding, cancelling an add, switching versions and checking for new versions; Wails bindings regenerate.
 - Frontend: the library gets "Add from repository" with an address/version/warning dialog; the course overview gets the version selector and "Check for new versions".
-- `go.mod`: go-git and its dependencies removed.
+- `go.mod`: go-git's transport, ssh and crypto dependencies removed; go-git itself stays for `plumbing/format/gitignore`.
 - No change to the `library.json` format (`origin: "repo"` already exists) or to progress files.
 - `docs/authoring.md`: publishing from a git repository (versions as `vX.Y.Z` tags, never move a released tag, no Git LFS or submodules, private repositories), "Repository courses and course versions" leaves "Not yet available".

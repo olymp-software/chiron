@@ -37,6 +37,13 @@ type App struct {
 	runIDs atomic.Int64
 	// stops holds the stop function of each running script by run id.
 	stops sync.Map
+
+	// addMu guards addCtx and cancelAdd, the context and cancel function of
+	// the running repository add step. The add dialog is modal, so one runs
+	// at a time.
+	addMu     sync.Mutex
+	addCtx    context.Context
+	cancelAdd context.CancelFunc
 }
 
 // NewApp creates the bound App.
@@ -157,6 +164,104 @@ func (a *App) PickFolder(title string) string {
 func (a *App) AddLocalCourse(path string) CourseResult {
 	e, err := a.lib.AddLocal(path)
 	return CourseResult{Course: e, Error: a.coded(err)}
+}
+
+// RemoteVersionsResult is the course versions of a repository about to be
+// added, the existing entry of a repository already in the library, or the
+// error that prevented listing them. Cancelled tells that CancelAdd stopped
+// the listing.
+type RemoteVersionsResult struct {
+	Remote    library.Remote `json:"remote"`
+	Cancelled bool           `json:"cancelled"`
+	Error     *apperr.Error  `json:"error,omitempty"`
+}
+
+// AddRepoResult is the added course or the error that prevented adding it.
+// Cancelled tells that CancelAdd stopped the add; nothing was added then.
+type AddRepoResult struct {
+	Course    library.Entry `json:"course"`
+	Cancelled bool          `json:"cancelled"`
+	Error     *apperr.Error `json:"error,omitempty"`
+}
+
+// CheckVersionsResult is the course versions a check for new versions found,
+// highest first, or the error that prevented the check.
+type CheckVersionsResult struct {
+	New   []string      `json:"new"`
+	Error *apperr.Error `json:"error,omitempty"`
+}
+
+// RemoteVersions lists the course versions of the repository at addr. An
+// address of a course already in the library returns its entry without
+// contacting the repository. CancelAdd stops it.
+func (a *App) RemoteVersions(addr string) RemoteVersionsResult {
+	ctx, done := a.startAdd()
+	defer done()
+	r, err := a.lib.RemoteVersions(ctx, addr)
+	if errors.Is(err, context.Canceled) {
+		return RemoteVersionsResult{Remote: library.Remote{Versions: []string{}}, Cancelled: true}
+	}
+	if err != nil {
+		return RemoteVersionsResult{Remote: library.Remote{Versions: []string{}}, Error: a.coded(err)}
+	}
+	return RemoteVersionsResult{Remote: r}
+}
+
+// AddRepoCourse clones the repository source at version and adds it; the
+// learner has already confirmed the script warning. CancelAdd stops it.
+func (a *App) AddRepoCourse(source, version string) AddRepoResult {
+	ctx, done := a.startAdd()
+	defer done()
+	e, err := a.lib.AddRepo(ctx, source, version)
+	if errors.Is(err, context.Canceled) {
+		return AddRepoResult{Cancelled: true}
+	}
+	return AddRepoResult{Course: e, Error: a.coded(err)}
+}
+
+// CancelAdd stops the running RemoteVersions or AddRepoCourse, if any.
+func (a *App) CancelAdd() ErrorResult {
+	a.addMu.Lock()
+	defer a.addMu.Unlock()
+	if a.cancelAdd != nil {
+		a.cancelAdd()
+	}
+	return ErrorResult{}
+}
+
+// startAdd returns the context of a repository add step that CancelAdd
+// cancels, and the function to call when the step is over.
+func (a *App) startAdd() (context.Context, func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	a.addMu.Lock()
+	a.addCtx, a.cancelAdd = ctx, cancel
+	a.addMu.Unlock()
+	return ctx, func() {
+		cancel()
+		a.addMu.Lock()
+		defer a.addMu.Unlock()
+		// A newer step may have replaced this one.
+		if a.addCtx == ctx {
+			a.addCtx, a.cancelAdd = nil, nil
+		}
+	}
+}
+
+// SwitchVersion checks out another locally known version of a repository
+// course, stopping its scripts first.
+func (a *App) SwitchVersion(key, version string) CourseResult {
+	e, err := a.lib.SwitchVersion(context.Background(), key, version)
+	return CourseResult{Course: e, Error: a.coded(err)}
+}
+
+// CheckVersions fetches the course versions of a repository course that the
+// app does not know yet; the selected version does not change.
+func (a *App) CheckVersions(key string) CheckVersionsResult {
+	found, err := a.lib.CheckVersions(context.Background(), key)
+	if err != nil {
+		return CheckVersionsResult{New: []string{}, Error: a.coded(err)}
+	}
+	return CheckVersionsResult{New: found}
 }
 
 // SyncCourse refreshes the course copy of a local-folder course.

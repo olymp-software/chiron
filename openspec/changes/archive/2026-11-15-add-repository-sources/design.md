@@ -108,7 +108,7 @@ In place rather than a copy-and-swap like Sync: git already writes only changed 
 
 ### 8. Removal and Windows read-only files
 
-`Remove` and `Recover` already delete course copies with `os.RemoveAll`. git writes pack files and loose objects read-only, which `DeleteFile` refuses on Windows. The delete helper clears the read-only attribute and retries on Windows; covered by a Windows test that removes a real clone.
+`Remove` and `Recover` already delete course copies with `os.RemoveAll`. git writes pack files and loose objects read-only, which `DeleteFile` refuses on Windows. Go's `os.Remove` on Windows already clears the read-only attribute and retries, so no helper of our own is needed; a test that removes a real clone after `git gc` pins this on Windows.
 
 ### 9. Frontend
 
@@ -118,9 +118,11 @@ In place rather than a copy-and-swap like Sync: git already writes only changed 
 - `LibraryView` shows a "newer version available" mark from `Outdated`.
 - New i18n strings in `en.json` and `ru.json`, including messages for the new error codes.
 
-### 10. Removing go-git
+### 10. Removing the go-git spike
 
-`internal/source/source.go` (`CloneTags`) and its test are deleted, `go mod tidy` drops go-git and its dependencies. The package comment moves to another file of `internal/source`.
+`internal/source/source.go` (`CloneTags`) and its test are deleted, `go mod tidy` drops the dependencies only the spike needed (transport, ssh, crypto). The package comment moves to another file of `internal/source`.
+
+go-git itself stays: `source.CopyLocal` uses `plumbing/format/gitignore` to skip files excluded by `.gitignore` when copying a local folder, and that package pulls in only go-billy and gcfg. *Alternatives:* standalone gitignore libraries are either unmaintained for years (sabhiram, denormal, monochromegane) or new with almost no users (git-pkgs/gitignore, bep/gogitignore); go-git's package is maintained and widely copied (e.g. by fluxcd).
 
 ## Risks / Trade-offs
 

@@ -4,9 +4,11 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import {
+  CheckVersions,
   CourseOverview as LoadOverview,
   RemoveCourse,
   StartWorkshopControl,
+  SwitchVersion,
   SyncCourse,
 } from '../../wailsjs/go/main/App'
 import { main } from '../../wailsjs/go/models'
@@ -17,7 +19,9 @@ import CourseOverview from './CourseOverview.vue'
 vi.mock('../../wailsjs/go/main/App', () => ({
   RemoveCourse: vi.fn(),
   CancelCheck: vi.fn(),
+  CheckVersions: vi.fn(),
   StopRun: vi.fn(),
+  SwitchVersion: vi.fn(),
   CourseOverview: vi.fn(),
   EnrollCourse: vi.fn(),
   StartCheck: vi.fn(),
@@ -174,6 +178,125 @@ it.each([
   const w = await mountOverview()
 
   expect(w.get('.remove').text()).toBe('Remove')
+})
+
+function repoCourse(version: string, versions: string[]) {
+  const res = overview(false)
+  res.overview.origin = 'repo'
+  res.overview.source = 'https://github.com/owner/go'
+  res.overview.version = version
+  res.overview.versions = versions
+  return res
+}
+
+function versionOptions(w: Awaited<ReturnType<typeof mountOverview>>) {
+  return w.get('select[name=version]').findAll('option')
+}
+
+it('shows the version controls of a repository course and no Sync', async () => {
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', ['v1.1.0', 'v1.0.0']))
+
+  const w = await mountOverview()
+
+  expect(w.get<HTMLSelectElement>('select[name=version]').element.value).toBe('v1.0.0')
+  expect(versionOptions(w).map((o) => o.text())).toEqual(['v1.1.0', 'v1.0.0'])
+  expect(w.get('.check-versions').text()).toBe('Check for new versions')
+  expect(buttons(w)).toEqual(['Continue'])
+})
+
+it('shows Sync and no version controls for a local-folder course', async () => {
+  loadOverview.mockResolvedValue(overview(false))
+
+  const w = await mountOverview()
+
+  expect(w.find('.versions').exists()).toBe(false)
+  expect(buttons(w)).toEqual(['Sync', 'Continue'])
+})
+
+it('switches the version and reloads the overview', async () => {
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', ['v1.1.0', 'v1.0.0']))
+  const w = await mountOverview()
+  vi.mocked(SwitchVersion).mockResolvedValue(main.CourseResult.createFrom({}))
+  loadOverview.mockResolvedValue(repoCourse('v1.1.0', ['v1.1.0', 'v1.0.0']))
+
+  await w.get('select[name=version]').setValue('v1.1.0')
+  await flushPromises()
+
+  expect(SwitchVersion).toHaveBeenCalledExactlyOnceWith('go-1', 'v1.1.0')
+  expect(loadOverview).toHaveBeenCalledTimes(2)
+  expect(w.get<HTMLSelectElement>('select[name=version]').element.value).toBe('v1.1.0')
+})
+
+it('shows a switch error', async () => {
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', ['v1.1.0', 'v1.0.0']))
+  const w = await mountOverview()
+  vi.mocked(SwitchVersion).mockResolvedValue(
+    main.CourseResult.createFrom({ error: { code: 'gitNotFound', params: {} } }),
+  )
+
+  await w.get('select[name=version]').setValue('v1.1.0')
+  await flushPromises()
+
+  expect(w.text()).toContain(en.errors.gitNotFound)
+})
+
+it('disables the version controls while switching', async () => {
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', ['v1.1.0', 'v1.0.0']))
+  const w = await mountOverview()
+  vi.mocked(SwitchVersion).mockReturnValue(new Promise(() => {}))
+
+  await w.get('select[name=version]').setValue('v1.1.0')
+
+  expect(w.get('select[name=version]').attributes('disabled')).toBeDefined()
+  expect(w.get('.check-versions').attributes('disabled')).toBeDefined()
+})
+
+it.each([
+  [['v1.2.0'], 'Found: v1.2.0'],
+  [[], 'No new versions'],
+])('checks for new versions: %j', async (found, message) => {
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', ['v1.1.0', 'v1.0.0']))
+  const w = await mountOverview()
+  vi.mocked(CheckVersions).mockResolvedValue(main.CheckVersionsResult.createFrom({ new: found }))
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', [...found, 'v1.1.0', 'v1.0.0']))
+
+  await w.get('.check-versions').trigger('click')
+  await flushPromises()
+
+  expect(CheckVersions).toHaveBeenCalledExactlyOnceWith('go-1')
+  expect(w.get('.versions-result').text()).toBe(message)
+  expect(versionOptions(w).map((o) => o.text())).toEqual([...found, 'v1.1.0', 'v1.0.0'])
+  expect(w.get<HTMLSelectElement>('select[name=version]').element.value).toBe('v1.0.0')
+})
+
+it('shows a failed check for new versions', async () => {
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', ['v1.0.0']))
+  const w = await mountOverview()
+  vi.mocked(CheckVersions).mockResolvedValue(
+    main.CheckVersionsResult.createFrom({
+      new: [],
+      error: { code: 'repoUnreachable', params: {} },
+    }),
+  )
+
+  await w.get('.check-versions').trigger('click')
+  await flushPromises()
+
+  expect(w.text()).toContain(en.errors.repoUnreachable)
+  expect(w.find('.versions-result').exists()).toBe(false)
+})
+
+it('keeps the version controls with a broken manifest', async () => {
+  const res = repoCourse('v1.2.0', ['v1.2.0', 'v1.0.0'])
+  res.overview.enrolled = false
+  res.overview.error = { code: 'manifestInvalid', params: {} } as never
+  loadOverview.mockResolvedValue(res)
+
+  const w = await mountOverview()
+
+  expect(w.get('select[name=version]').attributes('disabled')).toBeUndefined()
+  expect(w.get('.check-versions').attributes('disabled')).toBeUndefined()
+  expect(w.get('.actions button').attributes('disabled')).toBeDefined()
 })
 
 async function confirmRemoval(w: Awaited<ReturnType<typeof mountOverview>>) {

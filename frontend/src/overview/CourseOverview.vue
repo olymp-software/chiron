@@ -1,13 +1,16 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import {
   CancelCheck,
+  CheckVersions,
   CourseOverview,
   EnrollCourse,
   StartCheck,
   StartWorkshopControl,
   StopRun,
+  SwitchVersion,
   SyncCourse,
 } from '../../wailsjs/go/main/App'
 import type { apperr, library } from '../../wailsjs/go/models'
@@ -20,12 +23,19 @@ import RemoveDialog from './RemoveDialog.vue'
 const props = defineProps<{ courseKey: string }>()
 
 const router = useRouter()
+const { t } = useI18n()
 
 const overview = ref<library.Overview>()
-// error is a failure to load the overview, to sync or to enroll, not a course
-// error.
+// error is a failure to load the overview, to sync, to switch or check
+// versions or to enroll, not a course error.
 const error = ref<apperr.Error>()
 const syncing = ref(false)
+const switching = ref(false)
+const checkingVersions = ref(false)
+// versionsResult tells what the last check for new versions found.
+const versionsResult = ref('')
+// busy is true while the course copy changes or is about to.
+const busy = computed(() => syncing.value || switching.value)
 const enrolling = ref(false)
 const checking = ref(false)
 // control is the index of the workshop control running in the modal.
@@ -63,6 +73,42 @@ async function sync() {
     await load()
   } finally {
     syncing.value = false
+  }
+}
+
+async function switchVersion(version: string) {
+  error.value = undefined
+  versionsResult.value = ''
+  switching.value = true
+  try {
+    const res = await SwitchVersion(props.courseKey, version)
+    // A failed switch may still have changed the clone, so the overview is
+    // read again either way.
+    await load()
+    if (res.error) {
+      error.value = res.error
+    }
+  } finally {
+    switching.value = false
+  }
+}
+
+async function checkVersions() {
+  error.value = undefined
+  versionsResult.value = ''
+  checkingVersions.value = true
+  try {
+    const res = await CheckVersions(props.courseKey)
+    if (res.error) {
+      error.value = res.error
+      return
+    }
+    versionsResult.value = res.new?.length
+      ? t('overview.newVersions', { versions: res.new.join(', ') })
+      : t('overview.noNewVersions')
+    await load()
+  } finally {
+    checkingVersions.value = false
   }
 }
 
@@ -105,34 +151,61 @@ onMounted(load)
           <code>{{ overview.key }}</code>
         </dd>
       </dl>
+      <div v-if="overview.origin === 'repo'" class="versions">
+        <label>
+          {{ $t('overview.version') }}
+          <select
+            name="version"
+            :value="overview.version"
+            :disabled="switching || checkingVersions || enrolling"
+            @change="switchVersion(($event.target as HTMLSelectElement).value)"
+          >
+            <option v-if="!overview.version" value="" disabled>
+              {{ $t('overview.noVersion') }}
+            </option>
+            <option v-for="v in overview.versions ?? []" :key="v" :value="v">{{ v }}</option>
+          </select>
+        </label>
+        <span v-if="switching">{{ $t('overview.switching') }}</span>
+        <button
+          class="check-versions"
+          :disabled="switching || checkingVersions || enrolling"
+          @click="checkVersions"
+        >
+          {{ checkingVersions ? $t('overview.checkingVersions') : $t('overview.checkVersions') }}
+        </button>
+        <span v-if="versionsResult" class="versions-result" aria-live="polite">
+          {{ versionsResult }}
+        </span>
+      </div>
       <div class="actions">
         <button v-if="overview.origin === 'local'" :disabled="syncing" @click="sync">
           {{ syncing ? $t('overview.syncing') : $t('overview.sync') }}
         </button>
-        <button v-if="overview.check" :disabled="syncing" @click="checking = true">
+        <button v-if="overview.check" :disabled="busy" @click="checking = true">
           {{ $t('overview.checkEnvironment') }}
         </button>
         <button
           v-for="(label, i) in overview.controls ?? []"
           :key="i"
-          :disabled="syncing"
+          :disabled="busy"
           @click="control = i"
         >
           {{ label }}
         </button>
         <button
           v-if="overview.enrolled"
-          :disabled="blocked || syncing"
+          :disabled="blocked || busy"
           @click="router.push(`/courses/${courseKey}`)"
         >
           {{ overview.completed ? $t('overview.review') : $t('overview.continue') }}
         </button>
-        <button v-else :disabled="blocked || syncing || enrolling" @click="enroll">
+        <button v-else :disabled="blocked || busy || enrolling" @click="enroll">
           {{ $t('overview.enroll') }}
         </button>
       </div>
       <div class="removal">
-        <button class="remove" :disabled="syncing || enrolling" @click="removing = true">
+        <button class="remove" :disabled="busy || enrolling" @click="removing = true">
           {{ $t('remove.button') }}
         </button>
       </div>
@@ -198,9 +271,20 @@ h1 {
   opacity: 0.7;
 }
 
-.actions {
+.actions,
+.versions {
   display: flex;
   flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.versions {
+  align-items: center;
+}
+
+.versions label {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 

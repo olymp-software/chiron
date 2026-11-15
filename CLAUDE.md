@@ -26,7 +26,7 @@ Only `./internal/...` is tested; the root `main` package needs `frontend/dist` a
 
 Never change file permissions (`chmod`, `git update-index --chmod`) unless explicitly told to. Whatever modes `wails build` or `wails generate` leave are correct, even if `git diff` shows a mode change.
 
-Test courses for manual checks in the app go to `tmp/courses/` in the repo root, never to `/tmp` or the scratchpad. Name them `NN-<name>` with the next free number (e.g. `13-theory-activities`) and add their checks to `tmp/courses/CHECKLIST.md`. Test workshops follow the same rules in `tmp/workshops/`, with `tmp/workshops/CHECKLIST.md`.
+Test courses for manual checks in the app go to `tmp/courses/` in the repo root, never to `/tmp` or the scratchpad. Name them `NN-<name>` with the next free number (e.g. `13-theory-activities`). Test workshops follow the same rules in `tmp/workshops/`. The manual checks to run with them are written in the change's `tasks.md`, as part of the task that needs them, not in a separate checklist file.
 
 ## Architecture
 

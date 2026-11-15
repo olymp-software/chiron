@@ -17,10 +17,11 @@ Contents:
 9. [Workshops](#workshops)
 10. [Scripts](#scripts)
 11. [The environment check](#the-environment-check)
-12. [Progress and changing a published course](#progress-and-changing-a-published-course)
-13. [Editor support: JSON Schemas](#editor-support-json-schemas)
-14. [Errors](#errors)
-15. [Not yet available](#not-yet-available)
+12. [Publishing from a git repository](#publishing-from-a-git-repository)
+13. [Progress and changing a published course](#progress-and-changing-a-published-course)
+14. [Editor support: JSON Schemas](#editor-support-json-schemas)
+15. [Errors](#errors)
+16. [Not yet available](#not-yet-available)
 
 ## Quick start
 
@@ -67,6 +68,8 @@ The authoring loop:
 3. Reopen the activity.
 
 The app never watches your folder: it works from its own copy, refreshed only by Sync. Sync includes uncommitted edits; the folder doesn't have to be a git repository.
+
+To hand the course to Learners, push it to a git repository and tag a version; Learners press **Add from repository** next to **Add from folder** and enter its address. See [Publishing from a git repository](#publishing-from-a-git-repository).
 
 ## Courses and workshops
 
@@ -515,6 +518,31 @@ kubectl version --client || {
 
 Without `check`, the Learner can enroll right away.
 
+## Publishing from a git repository
+
+A course or workshop is published as a git repository with `course.yaml` or `workshop.yaml` in its root. The Learner adds it with **Add from repository**: the app lists its versions, the Learner picks one and confirms the script warning, then the app downloads the repository and adds it if the manifest at that version is valid.
+
+**Addresses.** The Learner can enter:
+
+| Form | Example |
+|---|---|
+| https | `https://github.com/owner/course` |
+| ssh | `ssh://git@gitlab.example.com:2222/team/course.git` |
+| scp-like ssh | `git@gitlab.example.com:team/course.git` |
+| GitHub shorthand | `github.com/owner/course` (means https) |
+
+`http://`, `git://` and `file://` are not accepted. An https and an ssh address of one repository are two different courses with separate progress, and so is a fork. Spelling differences (case, a trailing `.git` or `/`) don't make a different course.
+
+**Versions are tags.** A course version is a git tag `vX.Y.Z` with no leading zeros, e.g. `v1.0.0`, `v1.10.2`. Every other tag, including pre-release tags like `v2.0.0-beta.1`, is ignored; branches are never used. A repository without a `vX.Y.Z` tag can't be added. The Learner picks the version when adding (the highest is preselected) and can switch to any known version, older or newer, in the course overview. Switching stops the course's scripts; the Learner's folders and progress are kept, and an activity that is new in the picked version is not completed.
+
+**New versions reach Learners only on request.** After adding, the app contacts the repository only when the Learner presses **Check for new versions** in the course overview. New tags then show up in the version selector and the library marks the course as having a newer version, but the Learner stays on their version until they switch.
+
+**Never move or delete a released tag.** A tag the app has already fetched keeps the commit it had; moving it later has no effect for Learners who have it, while new Learners get the new commit, so the same version would mean different content. To fix a release, tag a new version.
+
+**Files exactly as committed.** The app's copy is a full clone checked out at the tag. The Learner's git settings for line endings and hooks don't apply: a script committed with LF line endings stays LF on Windows. Git LFS content is not downloaded (the copy holds the LFS pointer files) and submodules are not fetched (their folders are empty), so keep everything the course needs as regular files in the repository.
+
+**Private repositories** work through the Learner's own git: credential helpers such as Git Credential Manager for https, an ssh agent or keys for ssh. The app stores no credentials and never waits for terminal input: if git would need a password, a passphrase or a host key confirmation in a terminal, adding fails with an error. A custom ssh command in the Learner's git settings must accept OpenSSH options, because the app adds `-o BatchMode=yes` to it; PuTTY's `plink` doesn't. Learners need git installed to add a repository; courses added from a local folder work without it.
+
 ## Progress and changing a published course
 
 - Progression is strictly sequential: the current activity is the first one not completed; later ones are locked.
@@ -524,8 +552,8 @@ Without `check`, the Learner can enroll right away.
   - renaming a slug creates a new, not completed activity, and the old progress no longer applies;
   - an activity added before the current one becomes current, and a completed course with a new activity is no longer completed;
   - removing the current activity moves the Learner to the first activity not completed.
-- Content changes (texts, questions, scripts) are visible right after Sync.
-- The library keeps the last valid `title` from the manifest; a broken manifest after Sync doesn't rename the course.
+- Content changes (texts, questions, scripts) are visible right after Sync, or after the Learner switches to the version that has them.
+- The library keeps the last valid `title` from the manifest; a broken manifest after Sync or a version switch doesn't rename the course.
 
 ## Editor support: JSON Schemas
 
@@ -552,7 +580,7 @@ If a file has a `version` newer than the app supports, or an unknown activity `t
 
 ## Errors
 
-- **Course error**: the manifest is missing, invalid, or the root has both or neither manifest, or two overview files. The course can't be added; after a Sync, the course overview shows the error and keeps Sync available, and Enroll and Continue are unavailable.
+- **Course error**: the manifest is missing, invalid, or the root has both or neither manifest, or two overview files. The course can't be added; after a Sync or a version switch, the course overview shows the error and keeps Sync or the version selector available, and Enroll and Continue are unavailable.
 - **Activity error**: the activity folder or `activity.yaml` is missing, isn't valid YAML, breaks the schema or a semantic check (e.g. wrong number of correct options, a path that leaves the activity folder). It shows in place of the activity; the rest of the course works.
 
 Errors list every problem found with the YAML path of the offending value, e.g. `data.questions[2].data.options`. Fix the file, Sync, and reopen the activity.
@@ -563,7 +591,6 @@ Parse errors are also written to the app log (**Open log folder**). Script outpu
 
 These are specified (see `openspec/specs/`) but not in the app yet. Don't rely on them; this list shrinks as they ship.
 
-- **Repository courses and course versions.** Adding a course by git URL, course versions as `vX.Y.Z` tags, the version selector. Today every course is added from a local folder and updated with Sync.
 - **Scripts in course activities.** `controls` in a course `activity.yaml` are validated but not shown or run. Per the spec they'll run with the activity folder as working directory and `ACTIVITY_DIR`, `WORKSPACE_DIR` (the per-activity learner folder), `HOST_OS`, `HOST_ARCH`.
 - **The coding activity in full.** Copying `workspace` files to a per-activity learner folder (`~/Chiron/<storage key>/<activity slug>`), Reset and Full reset, the **Open in external editor** button. Files outside `workspace` (hidden tests, solutions) will stay in the course and remain readable by scripts.
 - **Choosing an external editor** in settings; today folders open in the system file manager.

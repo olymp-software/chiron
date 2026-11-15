@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { AddLocalCourse, ListCourses, PickFolder } from '../../wailsjs/go/main/App'
 import type { apperr, library } from '../../wailsjs/go/models'
 import ErrorView from '../errors/ErrorView.vue'
+import AddRepoDialog from './AddRepoDialog.vue'
 import ScriptWarning from './ScriptWarning.vue'
 
 const { t } = useI18n()
@@ -15,6 +16,8 @@ const error = ref<apperr.Error>()
 // pendingPath is the picked folder waiting for the script warning.
 const pendingPath = ref('')
 const adding = ref(false)
+// addingRepo is true while the repository add dialog is open.
+const addingRepo = ref(false)
 
 // groups are the sections of the library; one without entries is not shown.
 const groups = computed(() =>
@@ -56,9 +59,14 @@ async function add() {
   <section class="library">
     <div class="heading">
       <h1>{{ $t('library.title') }}</h1>
-      <button :disabled="adding" @click="pickFolder">
-        {{ adding ? $t('library.adding') : $t('library.add') }}
-      </button>
+      <div class="add">
+        <button :disabled="adding" @click="pickFolder">
+          {{ adding ? $t('library.adding') : $t('library.add') }}
+        </button>
+        <button :disabled="adding" @click="addingRepo = true">
+          {{ $t('library.addRepo') }}
+        </button>
+      </div>
     </div>
     <ErrorView v-if="error" :error="error" />
     <p v-if="!courses.length && !error">{{ $t('library.empty') }}</p>
@@ -68,13 +76,17 @@ async function add() {
         <li v-for="c in g.items" :key="c.key">
           <button class="course" @click="router.push(`/library/${c.key}`)">
             <span>{{ c.title }}</span>
-            <span v-if="c.completed" class="status">{{ $t('library.completed') }}</span>
-            <span v-else-if="c.enrolled" class="status">{{ $t('library.enrolled') }}</span>
+            <span class="marks">
+              <span v-if="c.outdated" class="outdated">{{ $t('library.outdated') }}</span>
+              <span v-if="c.completed" class="status">{{ $t('library.completed') }}</span>
+              <span v-else-if="c.enrolled" class="status">{{ $t('library.enrolled') }}</span>
+            </span>
           </button>
         </li>
       </ul>
     </section>
     <ScriptWarning v-if="pendingPath" @confirm="add" @cancel="pendingPath = ''" />
+    <AddRepoDialog v-if="addingRepo" @close="addingRepo = false" />
   </section>
 </template>
 
@@ -118,8 +130,22 @@ ul {
   text-align: left;
 }
 
+.add,
+.marks {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status,
+.outdated {
+  font-size: 0.875rem;
+}
+
 .status {
   opacity: 0.7;
-  font-size: 0.875rem;
+}
+
+.outdated {
+  color: #b5650d;
 }
 </style>

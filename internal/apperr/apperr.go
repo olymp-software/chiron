@@ -56,6 +56,18 @@ const (
 	LibraryReadFailed  Code = "libraryReadFailed"
 	LibraryWriteFailed Code = "libraryWriteFailed"
 
+	// Repository courses and git. GitFailed has an output param: the last
+	// lines of git's error output, shown as a technical detail.
+	GitNotFound        Code = "gitNotFound"
+	GitFailed          Code = "gitFailed"
+	RepoAddressInvalid Code = "repoAddressInvalid"
+	RepoAccessDenied   Code = "repoAccessDenied"
+	RepoNotFound       Code = "repoNotFound"
+	RepoUnreachable    Code = "repoUnreachable"
+	SshHostUnknown     Code = "sshHostUnknown"
+	NoVersions         Code = "noVersions"
+	VersionNotFound    Code = "versionNotFound"
+
 	// Enrollment and progress.
 	NotEnrolled         Code = "notEnrolled"
 	ProgressReadFailed  Code = "progressReadFailed"
@@ -111,6 +123,15 @@ var All = []Code{
 	LibraryNewerFormat,
 	LibraryReadFailed,
 	LibraryWriteFailed,
+	GitNotFound,
+	GitFailed,
+	RepoAddressInvalid,
+	RepoAccessDenied,
+	RepoNotFound,
+	RepoUnreachable,
+	SshHostUnknown,
+	NoVersions,
+	VersionNotFound,
 	NotEnrolled,
 	ProgressReadFailed,
 	ProgressWriteFailed,

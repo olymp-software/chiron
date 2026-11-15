@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/olymp-software/chiron/internal/apperr"
+	"github.com/olymp-software/chiron/internal/git"
 	"github.com/olymp-software/chiron/internal/manifest"
 	"github.com/olymp-software/chiron/internal/source"
 )
@@ -57,10 +58,13 @@ func courseFolder(t *testing.T, title string) string {
 
 func openLib(t *testing.T, dataDir string) *Library {
 	t.Helper()
-	l, err := Open(dataDir, filepath.Join(dataDir, "learner"), slog.New(slog.DiscardHandler))
+	log := slog.New(slog.DiscardHandler)
+	l, err := Open(dataDir, filepath.Join(dataDir, "learner"), log)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+	// Test repositories are cloned by their file:// URLs.
+	l.git = git.New(filepath.Join(dataDir, hooksDir), log, git.AllowFileProtocol())
 	if err := l.Recover(); err != nil {
 		t.Fatalf("Recover: %v", err)
 	}
@@ -494,7 +498,7 @@ func TestOverview(t *testing.T) {
 		t.Fatalf("Overview: %v", err)
 	}
 
-	want := Overview{Entry: e, Text: manifest.OverviewText{Markdown: "# Go"}}
+	want := Overview{Entry: e, Text: manifest.OverviewText{Markdown: "# Go"}, Versions: []string{}}
 	if !reflect.DeepEqual(o, want) {
 		t.Errorf("overview = %+v, want %+v", o, want)
 	}

@@ -6,7 +6,13 @@ export function Activity(arg1:string,arg2:string):Promise<main.ActivityResult>;
 
 export function AddLocalCourse(arg1:string):Promise<main.CourseResult>;
 
+export function AddRepoCourse(arg1:string,arg2:string):Promise<main.AddRepoResult>;
+
+export function CancelAdd():Promise<main.ErrorResult>;
+
 export function CancelCheck(arg1:string):Promise<main.ErrorResult>;
+
+export function CheckVersions(arg1:string):Promise<main.CheckVersionsResult>;
 
 export function CompleteActivity(arg1:string,arg2:string):Promise<main.CompleteResult>;
 
@@ -24,6 +30,8 @@ export function OpenFolder(arg1:string):Promise<main.ErrorResult>;
 
 export function PickFolder(arg1:string):Promise<string>;
 
+export function RemoteVersions(arg1:string):Promise<main.RemoteVersionsResult>;
+
 export function RemoveCourse(arg1:string,arg2:boolean,arg3:boolean):Promise<main.RemoveResult>;
 
 export function StartActivityCheck(arg1:string,arg2:string):Promise<main.StartCheckResult>;
@@ -39,5 +47,7 @@ export function StartWorkshopControl(arg1:string,arg2:number):Promise<main.Start
 export function StopActivityRuns(arg1:string):Promise<main.ErrorResult>;
 
 export function StopRun(arg1:number):Promise<main.ErrorResult>;
+
+export function SwitchVersion(arg1:string,arg2:string):Promise<main.CourseResult>;
 
 export function SyncCourse(arg1:string):Promise<main.CourseResult>;

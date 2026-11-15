@@ -37,6 +37,14 @@ func helper(mode string, args []string) {
 			os.Exit(1)
 		}
 		time.Sleep(10 * time.Minute)
+	case "spawn":
+		// Starts a grandchild and exits once it runs, leaving it behind.
+		gc := exec.Command(os.Args[0], "grandchild", args[0])
+		if err := gc.Start(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		helper("waitfile", []string{filepath.Join(args[0], "grandchild.pid")})
 	case "grandchild":
 		writePid(filepath.Join(args[0], "grandchild.pid"))
 		time.Sleep(10 * time.Minute)
