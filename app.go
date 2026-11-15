@@ -38,12 +38,14 @@ type App struct {
 	// stops holds the stop function of each running script by run id.
 	stops sync.Map
 
-	// addMu guards addCtx and cancelAdd, the context and cancel function of
-	// the running repository add step. The add dialog is modal, so one runs
+	// addMu guards the repository add step: addID and cancelAdd are the id
+	// and cancel function of the running step, cancelledID the id of a step
+	// cancelled before it started. The add dialog is modal, so one step runs
 	// at a time.
-	addMu     sync.Mutex
-	addCtx    context.Context
-	cancelAdd context.CancelFunc
+	addMu       sync.Mutex
+	addID       string
+	cancelAdd   context.CancelFunc
+	cancelledID string
 }
 
 // NewApp creates the bound App.
@@ -193,9 +195,9 @@ type CheckVersionsResult struct {
 
 // RemoteVersions lists the course versions of the repository at addr. An
 // address of a course already in the library returns its entry without
-// contacting the repository. CancelAdd stops it.
-func (a *App) RemoteVersions(addr string) RemoteVersionsResult {
-	ctx, done := a.startAdd()
+// contacting the repository. CancelAdd with the same step id stops it.
+func (a *App) RemoteVersions(addr, stepID string) RemoteVersionsResult {
+	ctx, done := a.startAdd(stepID)
 	defer done()
 	r, err := a.lib.RemoteVersions(ctx, addr)
 	if errors.Is(err, context.Canceled) {
@@ -208,9 +210,10 @@ func (a *App) RemoteVersions(addr string) RemoteVersionsResult {
 }
 
 // AddRepoCourse clones the repository source at version and adds it; the
-// learner has already confirmed the script warning. CancelAdd stops it.
-func (a *App) AddRepoCourse(source, version string) AddRepoResult {
-	ctx, done := a.startAdd()
+// learner has already confirmed the script warning. CancelAdd with the same
+// step id stops it.
+func (a *App) AddRepoCourse(source, version, stepID string) AddRepoResult {
+	ctx, done := a.startAdd(stepID)
 	defer done()
 	e, err := a.lib.AddRepo(ctx, source, version)
 	if errors.Is(err, context.Canceled) {
@@ -219,30 +222,41 @@ func (a *App) AddRepoCourse(source, version string) AddRepoResult {
 	return AddRepoResult{Course: e, Error: a.coded(err)}
 }
 
-// CancelAdd stops the running RemoteVersions or AddRepoCourse, if any.
-func (a *App) CancelAdd() ErrorResult {
+// CancelAdd stops the RemoteVersions or AddRepoCourse step with the step id.
+// The calls may arrive in either order: a step cancelled before it started
+// is cancelled as soon as it starts.
+func (a *App) CancelAdd(stepID string) ErrorResult {
+	if stepID == "" {
+		return ErrorResult{}
+	}
 	a.addMu.Lock()
 	defer a.addMu.Unlock()
-	if a.cancelAdd != nil {
+	if a.addID == stepID && a.cancelAdd != nil {
 		a.cancelAdd()
+		return ErrorResult{}
 	}
+	a.cancelledID = stepID
 	return ErrorResult{}
 }
 
-// startAdd returns the context of a repository add step that CancelAdd
-// cancels, and the function to call when the step is over.
-func (a *App) startAdd() (context.Context, func()) {
+// startAdd returns the context of the repository add step with the id, which
+// CancelAdd cancels, and the function to call when the step is over.
+func (a *App) startAdd(stepID string) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.addMu.Lock()
-	a.addCtx, a.cancelAdd = ctx, cancel
+	a.addID, a.cancelAdd = stepID, cancel
+	if a.cancelledID == stepID {
+		a.cancelledID = ""
+		cancel()
+	}
 	a.addMu.Unlock()
 	return ctx, func() {
 		cancel()
 		a.addMu.Lock()
 		defer a.addMu.Unlock()
 		// A newer step may have replaced this one.
-		if a.addCtx == ctx {
-			a.addCtx, a.cancelAdd = nil, nil
+		if a.addID == stepID {
+			a.addID, a.cancelAdd = "", nil
 		}
 	}
 }

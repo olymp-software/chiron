@@ -28,7 +28,7 @@ func TestNormalizeRepo(t *testing.T) {
 		{addr: "GitHub.com/Owner/Repo", want: "https://github.com/Owner/Repo"},
 		{addr: "git@github.com:/owner/repo.git", want: "ssh://git@github.com/owner/repo.git"},
 		{addr: "ssh://gitlab.example.com/team/course", want: "ssh://gitlab.example.com/team/course"},
-		{addr: "https://user:token@Example.com/team/course", want: "https://user:token@example.com/team/course"},
+		{addr: "https://user@Example.com/team/course", want: "https://user@example.com/team/course"},
 		{addr: "https://example.com:8443/team/course//", want: "https://example.com:8443/team/course"},
 	}
 	for _, tt := range tests {
@@ -67,6 +67,21 @@ func TestNormalizeRepoInvalid(t *testing.T) {
 		var ae *apperr.Error
 		if !errors.As(err, &ae) || ae.Code != apperr.RepoAddressInvalid || ae.Params["address"] != addr {
 			t.Errorf("NormalizeRepo(%q) err = %v, want %s with the address", addr, err, apperr.RepoAddressInvalid)
+		}
+	}
+}
+
+// Credentials must not end up in the course source, and the error, which is
+// logged, carries the address without the password.
+func TestNormalizeRepoRejectsCredentials(t *testing.T) {
+	for addr, want := range map[string]string{
+		"https://oauth2:glpat-secret@GitLab.com/team/course": "https://oauth2:***@gitlab.com/team/course",
+		"ssh://git:secret@host/team/course":                  "ssh://git:***@host/team/course",
+	} {
+		_, err := NormalizeRepo(addr)
+		var ae *apperr.Error
+		if !errors.As(err, &ae) || ae.Code != apperr.RepoAddressInvalid || ae.Params["address"] != want {
+			t.Errorf("NormalizeRepo(%q) err = %v, want %s with address %q", addr, err, apperr.RepoAddressInvalid, want)
 		}
 	}
 }

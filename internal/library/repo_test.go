@@ -227,6 +227,20 @@ func TestFetchKeepsKnownTags(t *testing.T) {
 	}
 }
 
+func TestFetchInBatches(t *testing.T) {
+	old := fetchBatch
+	fetchBatch = 1
+	t.Cleanup(func() { fetchBatch = old })
+	r := newTestRepo(t)
+	l, _ := newLib(t)
+
+	e := addRepo(t, l, r.URL, "v1.0.0")
+
+	if o := overview(t, l, e.Key); !slices.Equal(o.Versions, []string{"v1.2.0", "v1.1.1", "v1.1.0", "v1.0.0"}) {
+		t.Errorf("versions = %v, want all four", o.Versions)
+	}
+}
+
 // 5.4 Adding a repository course
 
 func TestAddRepoCourse(t *testing.T) {

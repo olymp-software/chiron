@@ -48,6 +48,13 @@ func NormalizeRepo(addr string) (string, error) {
 	if !hasUser {
 		user, host = "", authority
 	}
+	// A password or token in the address would be stored and logged with the
+	// course source; credentials belong to git's credential helpers. The error
+	// is logged too, so it carries the address without the password.
+	if name, _, hasPassword := strings.Cut(user, ":"); hasUser && hasPassword {
+		masked := scheme + "://" + name + ":***@" + strings.ToLower(host) + "/" + path
+		return "", apperr.New(apperr.RepoAddressInvalid, "address", masked)
+	}
 	if host == "" || path == "" || hasUser && user == "" || strings.ContainsAny(a, " \t\\?#") {
 		return "", invalid
 	}

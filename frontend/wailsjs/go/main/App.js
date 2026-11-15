@@ -10,12 +10,12 @@ export function AddLocalCourse(arg1) {
   return window['go']['main']['App']['AddLocalCourse'](arg1);
 }
 
-export function AddRepoCourse(arg1, arg2) {
-  return window['go']['main']['App']['AddRepoCourse'](arg1, arg2);
+export function AddRepoCourse(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AddRepoCourse'](arg1, arg2, arg3);
 }
 
-export function CancelAdd() {
-  return window['go']['main']['App']['CancelAdd']();
+export function CancelAdd(arg1) {
+  return window['go']['main']['App']['CancelAdd'](arg1);
 }
 
 export function CancelCheck(arg1) {
@@ -58,8 +58,8 @@ export function PickFolder(arg1) {
   return window['go']['main']['App']['PickFolder'](arg1);
 }
 
-export function RemoteVersions(arg1) {
-  return window['go']['main']['App']['RemoteVersions'](arg1);
+export function RemoteVersions(arg1, arg2) {
+  return window['go']['main']['App']['RemoteVersions'](arg1, arg2);
 }
 
 export function RemoveCourse(arg1, arg2, arg3) {

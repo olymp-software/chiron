@@ -142,7 +142,7 @@ func TestSSHCommandSources(t *testing.T) {
 				}
 			}
 			t.Setenv("GIT_SSH_COMMAND", tt.env)
-			cmd, err := newGit(t).command(context.Background(), "", []string{"status"})
+			cmd, err := newGit(t).command(context.Background(), "", []string{"fetch"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -150,6 +150,21 @@ func TestSSHCommandSources(t *testing.T) {
 				t.Errorf("GIT_SSH_COMMAND = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// Local commands do not run ssh, so the app does not spend a git process on
+// reading the learner's ssh command for them.
+func TestLocalCommandHasNoSSHCommand(t *testing.T) {
+	isolate(t)
+	for _, args := range [][]string{{"tag", "--points-at", "HEAD"}, {"for-each-ref"}, {"checkout", "v1.0.0"}} {
+		cmd, err := newGit(t).command(context.Background(), "", args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, _ := envValue(cmd.Env, "GIT_SSH_COMMAND"); got != "" {
+			t.Errorf("%v: GIT_SSH_COMMAND = %q, want it unset", args, got)
+		}
 	}
 }
 

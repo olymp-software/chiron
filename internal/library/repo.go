@@ -22,6 +22,11 @@ const (
 	hooksDir = "git-hooks"
 )
 
+// fetchBatch is how many tags one git fetch names, so a repository with many
+// versions stays within the Windows command-line length limit (32767
+// characters; a refspec of a version is about 40).
+var fetchBatch = 100
+
 // Remote is a repository about to be added: its course source and course
 // versions, highest first, or the library entry of the same course if it is
 // already added.
@@ -163,15 +168,14 @@ func (l *Library) fetchTags(ctx context.Context, dir string, known []string) ([]
 		return nil, err
 	}
 	missing := slices.DeleteFunc(git.Versions(tags), func(v string) bool { return slices.Contains(known, v) })
-	if len(missing) == 0 {
-		return missing, nil
-	}
-	args := []string{"fetch", "-q", "--no-tags", "origin"}
-	for _, v := range missing {
-		args = append(args, tagsPrefix+v+":"+tagsPrefix+v)
-	}
-	if _, err := l.git.Run(ctx, dir, args...); err != nil {
-		return nil, err
+	for batch := range slices.Chunk(missing, fetchBatch) {
+		args := []string{"fetch", "-q", "--no-tags", "origin"}
+		for _, v := range batch {
+			args = append(args, tagsPrefix+v+":"+tagsPrefix+v)
+		}
+		if _, err := l.git.Run(ctx, dir, args...); err != nil {
+			return nil, err
+		}
 	}
 	return missing, nil
 }
@@ -252,11 +256,15 @@ func (l *Library) SwitchVersion(ctx context.Context, key, version string) (Entry
 	if _, err := l.git.Run(ctx, dir, "checkout", "-q", "--force", "--detach", tagsPrefix+version); err != nil {
 		return Entry{}, err
 	}
-	if _, err := l.git.Run(ctx, dir, "clean", "-q", "-ffdx"); err != nil {
-		return Entry{}, err
-	}
 	l.log.Info("course version switched", "source", e.Source, "key", e.Key, "version", version)
-	return l.refresh(e)
+	// HEAD has moved, so the stored title, type and progress follow it even
+	// if leftovers cannot be cleaned; Recover cleans them on the next start.
+	_, cleanErr := l.git.Run(ctx, dir, "clean", "-q", "-ffdx")
+	refreshed, err := l.refresh(e)
+	if err != nil {
+		return refreshed, err
+	}
+	return refreshed, cleanErr
 }
 
 // CheckVersions fetches the course versions of a repository course that are

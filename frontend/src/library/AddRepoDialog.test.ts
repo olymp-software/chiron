@@ -58,7 +58,7 @@ it('opens the overview of a course already in the library', async () => {
 
   await enterAddress(w)
 
-  expect(RemoteVersions).toHaveBeenCalledExactlyOnceWith('github.com/owner/go')
+  expect(RemoteVersions).toHaveBeenCalledExactlyOnceWith('github.com/owner/go', expect.any(String))
   expect(push).toHaveBeenCalledExactlyOnceWith('/library/go-1')
   expect(AddRepoCourse).not.toHaveBeenCalled()
   expect(w.emitted('close')).toHaveLength(1)
@@ -90,7 +90,7 @@ it('adds the chosen version and opens its overview', async () => {
   await w.get('form').trigger('submit')
   await flushPromises()
 
-  expect(AddRepoCourse).toHaveBeenCalledExactlyOnceWith(source, 'v1.0.0')
+  expect(AddRepoCourse).toHaveBeenCalledExactlyOnceWith(source, 'v1.0.0', expect.any(String))
   expect(push).toHaveBeenCalledExactlyOnceWith('/library/go-1')
   expect(w.emitted('close')).toHaveLength(1)
 })
@@ -109,7 +109,9 @@ it('cancels the clone and returns to the version choice', async () => {
   await w.get('.cancel').trigger('click')
   await flushPromises()
 
-  expect(CancelAdd).toHaveBeenCalledOnce()
+  // Cancel names the step of the running clone.
+  const stepID = vi.mocked(AddRepoCourse).mock.calls[0][2]
+  expect(CancelAdd).toHaveBeenCalledExactlyOnceWith(stepID)
   expect(w.emitted('close')).toBeUndefined()
 
   finish(main.AddRepoResult.createFrom({ cancelled: true }))
@@ -117,6 +119,50 @@ it('cancels the clone and returns to the version choice', async () => {
 
   expect(w.find('select[name=version]').exists()).toBe(true)
   expect(w.find('.error').exists()).toBe(false)
+})
+
+it('returns to the version choice when the add call fails', async () => {
+  vi.mocked(RemoteVersions).mockResolvedValue(versions(['v1.0.0']))
+  vi.mocked(AddRepoCourse).mockRejectedValue(new Error('ipc failed'))
+  const w = mountDialog()
+  await enterAddress(w)
+  w.vm.$.appContext.config.errorHandler = () => {}
+
+  await w.get('form').trigger('submit')
+  await flushPromises()
+
+  expect(w.find('select[name=version]').exists()).toBe(true)
+  expect(w.find('[role=status]').exists()).toBe(false)
+})
+
+it('closes and ignores the listing result after Cancel', async () => {
+  let finish: (r: main.RemoteVersionsResult) => void = () => {}
+  vi.mocked(RemoteVersions).mockReturnValue(new Promise((resolve) => (finish = resolve)))
+  const w = mountDialog()
+  const push = vi.spyOn(router, 'push')
+  await w.get('input[name=address]').setValue('github.com/owner/go')
+  await w.get('form').trigger('submit')
+
+  await w.get('form button[type=button]').trigger('click')
+  await flushPromises()
+
+  const stepID = vi.mocked(RemoteVersions).mock.calls[0][1]
+  expect(CancelAdd).toHaveBeenCalledExactlyOnceWith(stepID)
+  expect(w.emitted('close')).toHaveLength(1)
+
+  finish(
+    main.RemoteVersionsResult.createFrom({
+      remote: {
+        source,
+        versions: [],
+        existing: { origin: 'repo', source, key: 'go-1', title: 'Go' },
+      },
+    }),
+  )
+  await flushPromises()
+
+  expect(push).not.toHaveBeenCalled()
+  expect(w.emitted('close')).toHaveLength(1)
 })
 
 it('shows a listing error at the address', async () => {

@@ -22,14 +22,27 @@ const version = ref('')
 // error is the failure of the step the dialog shows.
 const error = ref<apperr.Error>()
 
+// stepID identifies the running listing or clone, so CancelAdd stops exactly
+// that step even if it reaches Go before the step itself. A step whose id is
+// no longer current was cancelled; its result is ignored.
+let stepID = ''
+let steps = 0
+
+function newStep(): string {
+  steps++
+  stepID = `${Date.now()}-${steps}`
+  return stepID
+}
+
 onMounted(() => dialog.value?.showModal())
 
 async function next() {
   error.value = undefined
   listing.value = true
+  const id = newStep()
   try {
-    const res = await RemoteVersions(address.value)
-    if (res.cancelled) {
+    const res = await RemoteVersions(address.value, id)
+    if (res.cancelled || id !== stepID) {
       return
     }
     if (res.error) {
@@ -53,14 +66,21 @@ async function next() {
 async function add() {
   error.value = undefined
   step.value = 'cloning'
-  const res = await AddRepoCourse(source.value, version.value)
-  if (res.cancelled || res.error) {
-    error.value = res.error
-    step.value = 'version'
-    return
+  const id = newStep()
+  try {
+    const res = await AddRepoCourse(source.value, version.value, id)
+    if (res.cancelled || res.error) {
+      error.value = res.error
+      return
+    }
+    emit('close')
+    await router.push(`/library/${res.course.key}`)
+  } finally {
+    // Back to the version choice after a cancel, an error or a failed call.
+    if (step.value === 'cloning') {
+      step.value = 'version'
+    }
   }
-  emit('close')
-  await router.push(`/library/${res.course.key}`)
 }
 
 function back() {
@@ -68,13 +88,17 @@ function back() {
   step.value = 'address'
 }
 
-// cancel closes the dialog, stopping the listing or the clone first.
+// cancel stops a running clone and returns to the version choice once it has
+// stopped; otherwise it stops a running listing and closes the dialog.
 async function cancel() {
-  if (listing.value || step.value === 'cloning') {
-    await CancelAdd()
-    if (step.value === 'cloning') {
-      return
-    }
+  if (step.value === 'cloning') {
+    await CancelAdd(stepID)
+    return
+  }
+  if (listing.value) {
+    const id = stepID
+    stepID = ''
+    await CancelAdd(id)
   }
   emit('close')
 }

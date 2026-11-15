@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/olymp-software/chiron/internal/apperr"
@@ -80,12 +81,21 @@ func (g *Git) command(ctx context.Context, dir string, args []string) (*exec.Cmd
 		g.log.Error("create git hooks folder", "err", err)
 		return nil, apperr.New(apperr.Internal)
 	}
-	ssh := sshCommand(os.Getenv("GIT_SSH_COMMAND"), g.configSSHCommand(ctx, path))
 	cmd := exec.Command(path, append(g.configArgs(), args...)...)
 	cmd.Dir = dir
-	cmd.Env = environ(os.Environ(), ssh)
+	cmd.Env = environ(os.Environ())
+	// Only commands that contact a repository may run ssh; reading the
+	// learner's ssh command costs a git process, so local commands skip it.
+	if len(args) > 0 && slices.Contains(networkCommands, args[0]) {
+		ssh := sshCommand(os.Getenv("GIT_SSH_COMMAND"), g.configSSHCommand(ctx, path))
+		cmd.Env = append(cmd.Env, "GIT_SSH_COMMAND="+ssh)
+	}
 	return cmd, nil
 }
+
+// networkCommands are the git commands the app runs that contact a
+// repository.
+var networkCommands = []string{"clone", "fetch", "ls-remote"}
 
 // configArgs returns the -c options that override the learner's git settings
 // for every command.
@@ -113,13 +123,12 @@ func (g *Git) configArgs() []string {
 
 // environ returns base with the variables that keep git non-interactive and
 // its messages in English; later values win over inherited ones.
-func environ(base []string, ssh string) []string {
+func environ(base []string) []string {
 	return append(base[:len(base):len(base)],
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_LFS_SKIP_SMUDGE=1",
 		"LC_ALL=C",
 		"LANGUAGE=C",
-		"GIT_SSH_COMMAND="+ssh,
 	)
 }
 
