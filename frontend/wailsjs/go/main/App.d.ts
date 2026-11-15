@@ -8,11 +8,11 @@ export function AddLocalCourse(arg1:string):Promise<main.CourseResult>;
 
 export function AddRepoCourse(arg1:string,arg2:string,arg3:string):Promise<main.AddRepoResult>;
 
-export function CancelAdd(arg1:string):Promise<main.ErrorResult>;
-
 export function CancelCheck(arg1:string):Promise<main.ErrorResult>;
 
-export function CheckVersions(arg1:string):Promise<main.CheckVersionsResult>;
+export function CancelStep(arg1:string):Promise<main.ErrorResult>;
+
+export function CheckVersions(arg1:string,arg2:string):Promise<main.CheckVersionsResult>;
 
 export function CompleteActivity(arg1:string,arg2:string):Promise<main.CompleteResult>;
 

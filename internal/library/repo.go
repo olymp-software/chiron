@@ -269,16 +269,16 @@ func (l *Library) SwitchVersion(ctx context.Context, key, version string) (Entry
 
 // CheckVersions fetches the course versions of a repository course that are
 // not known locally and returns them, highest first. The selected version
-// does not change.
+// does not change. Cancelling ctx stops git and returns ctx.Err().
 func (l *Library) CheckVersions(ctx context.Context, key string) ([]string, error) {
 	e, err := l.repoEntry(key)
 	if err != nil {
 		return nil, err
 	}
-	// The lock serializes the fetch with a version switch.
-	unlock := l.lockCourse(e.Key)
-	defer unlock()
-
+	// The course lock is not taken: the check may wait on the network for
+	// long, and the course must stay usable meanwhile. The fetch only adds
+	// tags, never touches the worktree, and git locks the refs it writes, so
+	// it is safe beside a version switch or a running script.
 	dir := l.CopyPath(e.Key)
 	known, err := l.localVersions(ctx, dir)
 	if err != nil {

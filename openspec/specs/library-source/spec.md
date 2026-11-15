@@ -374,7 +374,7 @@ Adding by repository address SHALL first list the repository's versions without 
 - **THEN** the course is not in the library and no clone is left on disk
 
 ### Requirement: Check for new versions
-The course overview of a repository course SHALL have a "Check for new versions" button next to the version selector. It SHALL fetch the repository's `vX.Y.Z` tags that are not known locally and SHALL NOT change the selected version. The app SHALL NOT contact the repository of an added course in any other way. A failed check SHALL show an error and leave the course unchanged.
+The course overview of a repository course SHALL have a "Check for new versions" button next to the version selector. It SHALL fetch the repository's `vX.Y.Z` tags that are not known locally and SHALL NOT change the selected version. The app SHALL NOT contact the repository of an added course in any other way. A failed check SHALL show an error and leave the course unchanged. The learner SHALL be able to cancel a running check, and the course SHALL stay usable while the check runs.
 
 #### Scenario: New version released
 - **WHEN** the Author has published `v1.3.0`, the learner is on `v1.2.0` and presses "Check for new versions"
@@ -391,6 +391,14 @@ The course overview of a repository course SHALL have a "Check for new versions"
 #### Scenario: Opening a course
 - **WHEN** the learner opens the course overview or the course screen of a repository course
 - **THEN** the app does not contact the repository
+
+#### Scenario: Cancelled check
+- **WHEN** the learner cancels "Check for new versions" while git waits on a slow network
+- **THEN** git is stopped, the version list stays the same and no error is shown
+
+#### Scenario: Course usable during a check
+- **WHEN** "Check for new versions" is waiting on the network and the learner presses Continue
+- **THEN** the course screen opens and its activities and scripts work
 
 ### Requirement: Known tags are never replaced
 A tag the app already knows SHALL keep the commit it had when the app first fetched it, even if the Author later moves the tag in the repository.

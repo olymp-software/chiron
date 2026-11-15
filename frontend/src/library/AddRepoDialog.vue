@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { AddRepoCourse, CancelAdd, RemoteVersions } from '../../wailsjs/go/main/App'
+import { AddRepoCourse, CancelStep, RemoteVersions } from '../../wailsjs/go/main/App'
 import type { apperr } from '../../wailsjs/go/models'
 import ErrorView from '../errors/ErrorView.vue'
+import { newStepID } from '../steps'
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -22,15 +23,13 @@ const version = ref('')
 // error is the failure of the step the dialog shows.
 const error = ref<apperr.Error>()
 
-// stepID identifies the running listing or clone, so CancelAdd stops exactly
-// that step even if it reaches Go before the step itself. A step whose id is
-// no longer current was cancelled; its result is ignored.
+// stepID identifies the running listing or clone, so CancelStep stops
+// exactly that step. A step whose id is no longer current was cancelled; its
+// result is ignored.
 let stepID = ''
-let steps = 0
 
 function newStep(): string {
-  steps++
-  stepID = `${Date.now()}-${steps}`
+  stepID = newStepID()
   return stepID
 }
 
@@ -92,13 +91,13 @@ function back() {
 // stopped; otherwise it stops a running listing and closes the dialog.
 async function cancel() {
   if (step.value === 'cloning') {
-    await CancelAdd(stepID)
+    await CancelStep(stepID)
     return
   }
   if (listing.value) {
     const id = stepID
     stepID = ''
-    await CancelAdd(id)
+    await CancelStep(id)
   }
   emit('close')
 }

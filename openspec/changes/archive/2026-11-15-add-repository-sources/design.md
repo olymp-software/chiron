@@ -70,7 +70,7 @@ Two bound methods instead of one, because the version choice and script warning 
    - `manifest.Parse`; invalid → delete the folder, return the course error;
    - rename into `<courses>/<key>` and append the entry inside `update`, exactly like `AddLocal`.
    Any failure or cancel deletes the `.new-` folder; an app exit leaves it to `Recover`.
-3. `App.CancelAdd()` cancels the context of the running add. One add runs at a time (the dialog is modal), so the App keeps a single cancel func under a mutex.
+3. `App.CancelStep(stepID)` cancels the step with the id the UI passed to `RemoteVersions` or `AddRepoCourse` (and `CheckVersions`, decision 5). A Cancel that reaches Go before its step starts is remembered and cancels the step as soon as it starts. (Implemented after review; the first version was `CancelAdd()` with a single cancel func, which lost a Cancel that arrived before the step.)
 
 ### 4. Selected version and versions are read from the clone
 
@@ -90,7 +90,7 @@ A shared helper in `internal/library` (or `internal/git`) parses and orders vers
 2. Subtract the locally known tags.
 3. `git fetch --no-tags origin refs/tags/vA:refs/tags/vA …` for the missing ones only, without `+`.
 
-Existing tags are never named in a refspec, so they cannot move, whatever the git version and its clobber rules. This removes the reason for the minimum git version 2.20 discussed during exploration; no version check is needed. The same step fills the tags during add. It does not touch the worktree, so it does not take the course lock against running scripts, but it holds the lock to serialize with switch and Sync-like operations.
+Existing tags are never named in a refspec, so they cannot move, whatever the git version and its clobber rules. This removes the reason for the minimum git version 2.20 discussed during exploration; no version check is needed. The same step fills the tags during add. It does not touch the worktree and git locks the refs it writes, so it takes no course lock: a check waiting on a slow network must not block opening activities, running scripts or removal. It is cancellable like the add steps (`CancelStep` with a step id from the UI), and closing the course overview cancels it.
 
 ### 6. Version switch in place
 

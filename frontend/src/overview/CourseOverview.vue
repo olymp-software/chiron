@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import {
   CancelCheck,
+  CancelStep,
   CheckVersions,
   CourseOverview,
   EnrollCourse,
@@ -17,6 +18,7 @@ import type { apperr, library } from '../../wailsjs/go/models'
 import ErrorView from '../errors/ErrorView.vue'
 import { courseImages } from '../markdown/images'
 import MarkdownView from '../markdown/MarkdownView.vue'
+import { newStepID } from '../steps'
 import CheckModal from './CheckModal.vue'
 import RemoveDialog from './RemoveDialog.vue'
 
@@ -32,6 +34,8 @@ const error = ref<apperr.Error>()
 const syncing = ref(false)
 const switching = ref(false)
 const checkingVersions = ref(false)
+// checkStep is the step id of the running check for new versions.
+let checkStep = ''
 // versionsResult tells what the last check for new versions found.
 const versionsResult = ref('')
 // busy is true while the course copy changes or is about to.
@@ -97,8 +101,12 @@ async function checkVersions() {
   error.value = undefined
   versionsResult.value = ''
   checkingVersions.value = true
+  checkStep = newStepID()
   try {
-    const res = await CheckVersions(props.courseKey)
+    const res = await CheckVersions(props.courseKey, checkStep)
+    if (res.cancelled) {
+      return
+    }
     if (res.error) {
       error.value = res.error
       return
@@ -111,6 +119,17 @@ async function checkVersions() {
     checkingVersions.value = false
   }
 }
+
+function cancelCheckVersions() {
+  CancelStep(checkStep)
+}
+
+// A check still waiting on the network when the overview closes is stopped.
+onUnmounted(() => {
+  if (checkingVersions.value) {
+    CancelStep(checkStep)
+  }
+})
 
 async function enroll() {
   enrolling.value = true
@@ -173,6 +192,9 @@ onMounted(load)
           @click="checkVersions"
         >
           {{ checkingVersions ? $t('overview.checkingVersions') : $t('overview.checkVersions') }}
+        </button>
+        <button v-if="checkingVersions" class="cancel-check-versions" @click="cancelCheckVersions">
+          {{ $t('overview.cancelCheckVersions') }}
         </button>
         <span v-if="versionsResult" class="versions-result" aria-live="polite">
           {{ versionsResult }}

@@ -561,6 +561,7 @@ export namespace main {
 	}
 	export class CheckVersionsResult {
 	    new: string[];
+	    cancelled: boolean;
 	    error?: apperr.Error;
 	
 	    static createFrom(source: any = {}) {
@@ -570,6 +571,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.new = source["new"];
+	        this.cancelled = source["cancelled"];
 	        this.error = this.convertValues(source["error"], apperr.Error);
 	    }
 	

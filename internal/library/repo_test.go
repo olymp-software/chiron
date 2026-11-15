@@ -577,6 +577,35 @@ func TestCheckVersions(t *testing.T) {
 	}
 }
 
+// The check may wait on the network for long, so it does not take the course
+// lock that opening activities, running scripts and switching take.
+func TestCheckVersionsWithoutCourseLock(t *testing.T) {
+	r := repoWithFiles(t, map[string]string{manifest.CourseFile: courseYAML("Go")})
+	l, _ := newLib(t)
+	e := addRepo(t, l, r.URL, "v1.0.0")
+	r.Tag("v1.1.0", r.Commit(map[string]string{"notes.md": "new"}))
+	unlock := l.lockCourse(e.Key)
+	defer unlock()
+
+	found, err := l.CheckVersions(context.Background(), e.Key)
+
+	if err != nil || !slices.Equal(found, []string{"v1.1.0"}) {
+		t.Errorf("CheckVersions = %v, %v, want [v1.1.0]", found, err)
+	}
+}
+
+func TestCheckVersionsCancelled(t *testing.T) {
+	r := repoWithFiles(t, map[string]string{manifest.CourseFile: courseYAML("Go")})
+	l, _ := newLib(t)
+	e := addRepo(t, l, r.URL, "v1.0.0")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, err := l.CheckVersions(ctx, e.Key); !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v, want context.Canceled", err)
+	}
+}
+
 func TestCheckVersionsUnreachable(t *testing.T) {
 	r := repoWithFiles(t, map[string]string{manifest.CourseFile: courseYAML("Go")})
 	l, _ := newLib(t)

@@ -3,14 +3,14 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { AddRepoCourse, CancelAdd, RemoteVersions } from '../../wailsjs/go/main/App'
+import { AddRepoCourse, CancelStep, RemoteVersions } from '../../wailsjs/go/main/App'
 import { main } from '../../wailsjs/go/models'
 import en from '../i18n/en.json'
 import AddRepoDialog from './AddRepoDialog.vue'
 
 vi.mock('../../wailsjs/go/main/App', () => ({
   AddRepoCourse: vi.fn(),
-  CancelAdd: vi.fn(),
+  CancelStep: vi.fn(),
   RemoteVersions: vi.fn(),
 }))
 
@@ -19,7 +19,7 @@ const source = 'https://github.com/owner/go'
 beforeEach(() => {
   vi.resetAllMocks()
   HTMLDialogElement.prototype.showModal = vi.fn()
-  vi.mocked(CancelAdd).mockResolvedValue(main.ErrorResult.createFrom({}))
+  vi.mocked(CancelStep).mockResolvedValue(main.ErrorResult.createFrom({}))
 })
 
 let router: ReturnType<typeof createRouter>
@@ -111,7 +111,7 @@ it('cancels the clone and returns to the version choice', async () => {
 
   // Cancel names the step of the running clone.
   const stepID = vi.mocked(AddRepoCourse).mock.calls[0][2]
-  expect(CancelAdd).toHaveBeenCalledExactlyOnceWith(stepID)
+  expect(CancelStep).toHaveBeenCalledExactlyOnceWith(stepID)
   expect(w.emitted('close')).toBeUndefined()
 
   finish(main.AddRepoResult.createFrom({ cancelled: true }))
@@ -147,7 +147,7 @@ it('closes and ignores the listing result after Cancel', async () => {
   await flushPromises()
 
   const stepID = vi.mocked(RemoteVersions).mock.calls[0][1]
-  expect(CancelAdd).toHaveBeenCalledExactlyOnceWith(stepID)
+  expect(CancelStep).toHaveBeenCalledExactlyOnceWith(stepID)
   expect(w.emitted('close')).toHaveLength(1)
 
   finish(

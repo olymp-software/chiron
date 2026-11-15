@@ -82,6 +82,7 @@
     "switching": "Переключение…",
     "checkVersions": "Проверить новые версии",
     "checkingVersions": "Проверка…",
+    "cancelCheckVersions": "Отмена",
     "newVersions": "Найдены: {versions}",
     "noNewVersions": "Новых версий нет",
     "enroll": "Записаться",

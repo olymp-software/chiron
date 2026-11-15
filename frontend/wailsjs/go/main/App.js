@@ -14,16 +14,16 @@ export function AddRepoCourse(arg1, arg2, arg3) {
   return window['go']['main']['App']['AddRepoCourse'](arg1, arg2, arg3);
 }
 
-export function CancelAdd(arg1) {
-  return window['go']['main']['App']['CancelAdd'](arg1);
-}
-
 export function CancelCheck(arg1) {
   return window['go']['main']['App']['CancelCheck'](arg1);
 }
 
-export function CheckVersions(arg1) {
-  return window['go']['main']['App']['CheckVersions'](arg1);
+export function CancelStep(arg1) {
+  return window['go']['main']['App']['CancelStep'](arg1);
+}
+
+export function CheckVersions(arg1, arg2) {
+  return window['go']['main']['App']['CheckVersions'](arg1, arg2);
 }
 
 export function CompleteActivity(arg1, arg2) {

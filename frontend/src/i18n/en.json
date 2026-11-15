@@ -82,6 +82,7 @@
     "switching": "Switching…",
     "checkVersions": "Check for new versions",
     "checkingVersions": "Checking…",
+    "cancelCheckVersions": "Cancel",
     "newVersions": "Found: {versions}",
     "noNewVersions": "No new versions",
     "enroll": "Enroll",

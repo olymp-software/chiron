@@ -11,7 +11,7 @@ import LibraryView from './LibraryView.vue'
 vi.mock('../../wailsjs/go/main/App', () => ({
   AddLocalCourse: vi.fn(),
   AddRepoCourse: vi.fn(),
-  CancelAdd: vi.fn(),
+  CancelStep: vi.fn(),
   ListCourses: vi.fn(),
   PickFolder: vi.fn(),
   RemoteVersions: vi.fn(),

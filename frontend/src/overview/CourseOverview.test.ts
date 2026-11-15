@@ -4,6 +4,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import {
+  CancelStep,
   CheckVersions,
   CourseOverview as LoadOverview,
   RemoveCourse,
@@ -19,6 +20,7 @@ import CourseOverview from './CourseOverview.vue'
 vi.mock('../../wailsjs/go/main/App', () => ({
   RemoveCourse: vi.fn(),
   CancelCheck: vi.fn(),
+  CancelStep: vi.fn(),
   CheckVersions: vi.fn(),
   StopRun: vi.fn(),
   SwitchVersion: vi.fn(),
@@ -263,7 +265,7 @@ it.each([
   await w.get('.check-versions').trigger('click')
   await flushPromises()
 
-  expect(CheckVersions).toHaveBeenCalledExactlyOnceWith('go-1')
+  expect(CheckVersions).toHaveBeenCalledExactlyOnceWith('go-1', expect.any(String))
   expect(w.get('.versions-result').text()).toBe(message)
   expect(versionOptions(w).map((o) => o.text())).toEqual([...found, 'v1.1.0', 'v1.0.0'])
   expect(w.get<HTMLSelectElement>('select[name=version]').element.value).toBe('v1.0.0')
@@ -284,6 +286,40 @@ it('shows a failed check for new versions', async () => {
 
   expect(w.text()).toContain(en.errors.repoUnreachable)
   expect(w.find('.versions-result').exists()).toBe(false)
+})
+
+it('cancels a check for new versions and keeps the course usable meanwhile', async () => {
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', ['v1.0.0']))
+  const w = await mountOverview()
+  let finish: (r: main.CheckVersionsResult) => void = () => {}
+  vi.mocked(CheckVersions).mockReturnValue(new Promise((resolve) => (finish = resolve)))
+
+  await w.get('.check-versions').trigger('click')
+
+  expect(buttons(w)).toEqual(['Continue'])
+  expect(w.get('.actions button').attributes('disabled')).toBeUndefined()
+
+  await w.get('.cancel-check-versions').trigger('click')
+  const stepID = vi.mocked(CheckVersions).mock.calls[0][1]
+  expect(CancelStep).toHaveBeenCalledExactlyOnceWith(stepID)
+
+  finish(main.CheckVersionsResult.createFrom({ new: [], cancelled: true }))
+  await flushPromises()
+
+  expect(w.find('.cancel-check-versions').exists()).toBe(false)
+  expect(w.find('.versions-result').exists()).toBe(false)
+  expect(w.find('.error').exists()).toBe(false)
+})
+
+it('stops a running check for new versions when the overview closes', async () => {
+  loadOverview.mockResolvedValue(repoCourse('v1.0.0', ['v1.0.0']))
+  const w = await mountOverview()
+  vi.mocked(CheckVersions).mockReturnValue(new Promise(() => {}))
+  await w.get('.check-versions').trigger('click')
+
+  w.unmount()
+
+  expect(CancelStep).toHaveBeenCalledExactlyOnceWith(vi.mocked(CheckVersions).mock.calls[0][1])
 })
 
 it('keeps the version controls with a broken manifest', async () => {
