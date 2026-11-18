@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import type { library } from '../../wailsjs/go/models'
 import type { ImageResolver } from '../markdown/images'
 import MarkdownView from '../markdown/MarkdownView.vue'
-import { freshAnswers, isCorrect, result, type Answer } from '../quiz/quiz'
+import { arrange, freshAnswers, isCorrect, result, type Answer } from '../quiz/quiz'
 import QuizMap from './QuizMap.vue'
 import QuizQuestion from './QuizQuestion.vue'
 
@@ -14,13 +14,18 @@ const props = defineProps<{
 }>()
 
 // The whole quiz state lives here, so switching screens keeps it; a new
-// component, mounted for every opened activity, starts fresh.
+// component, mounted for every opened activity, starts fresh. arranged is the
+// quiz in the order shown, drawn on every fresh start; answers, numbering and
+// the map are positions in it. draw counts the orders drawn, so a question is
+// shown by a new QuizQuestion after every draw.
 const screen = ref<'theory' | 'quiz'>('theory')
 const started = ref(false)
 const open = ref(0)
-const answers = ref<Answer[]>(freshAnswers(props.quiz))
+const draw = ref(0)
+const arranged = ref(arrange(props.quiz))
+const answers = ref<Answer[]>(freshAnswers(arranged.value))
 
-const questions = computed(() => props.quiz.questions)
+const questions = computed(() => arranged.value.questions)
 const results = computed(() => answers.value.map(result))
 
 // shown is the element of the screen on display.
@@ -56,7 +61,9 @@ function check() {
 }
 
 function startOver() {
-  answers.value = freshAnswers(props.quiz)
+  arranged.value = arrange(props.quiz)
+  draw.value++
+  answers.value = freshAnswers(arranged.value)
   open.value = 0
 }
 </script>
@@ -83,7 +90,7 @@ function startOver() {
       </div>
     </div>
     <QuizQuestion
-      :key="open"
+      :key="`${draw}-${open}`"
       :question="questions[open]"
       :answer="answers[open]"
       :n="open + 1"

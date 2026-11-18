@@ -124,6 +124,7 @@ export namespace library {
 	    prompt: string;
 	    explanation: string;
 	    multiple: boolean;
+	    shuffle: boolean;
 	    options: Option[];
 	
 	    static createFrom(source: any = {}) {
@@ -136,6 +137,7 @@ export namespace library {
 	        this.prompt = source["prompt"];
 	        this.explanation = source["explanation"];
 	        this.multiple = source["multiple"];
+	        this.shuffle = source["shuffle"];
 	        this.options = this.convertValues(source["options"], Option);
 	    }
 	
@@ -158,6 +160,7 @@ export namespace library {
 		}
 	}
 	export class Quiz {
+	    shuffle: boolean;
 	    questions: Question[];
 	
 	    static createFrom(source: any = {}) {
@@ -166,6 +169,7 @@ export namespace library {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.shuffle = source["shuffle"];
 	        this.questions = this.convertValues(source["questions"], Question);
 	    }
 	

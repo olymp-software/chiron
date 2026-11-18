@@ -6,14 +6,17 @@ import { library } from '../../wailsjs/go/models'
 import en from '../i18n/en.json'
 import QuizActivity from './QuizActivity.vue'
 
-// quiz has three single-choice questions; the first option is correct.
-function quiz(): library.Quiz {
+// quiz has three single-choice questions Q1..Q3 with options Right (correct)
+// and Wrong, in that written order; shuffle sets both shuffle flags.
+function quiz(shuffle = false): library.Quiz {
   return library.Quiz.createFrom({
+    shuffle,
     questions: [1, 2, 3].map((n) => ({
       kind: 'choice',
       prompt: `Q${n}`,
       explanation: '',
       multiple: false,
+      shuffle,
       options: [
         { text: 'Right', correct: true, feedback: '' },
         { text: 'Wrong', correct: false, feedback: '' },
@@ -22,13 +25,13 @@ function quiz(): library.Quiz {
   })
 }
 
-async function mountQuiz(attachTo?: HTMLElement) {
+async function mountQuiz(attachTo?: HTMLElement, shuffle = false) {
   const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } })
   const w = mount(QuizActivity, {
     attachTo,
     props: {
       theoryBlocks: [library.TheoryBlock.createFrom({ kind: 'markdown', content: '# Intro' })],
-      quiz: quiz(),
+      quiz: quiz(shuffle),
       resolveImage: () => null,
     },
     global: { plugins: [i18n] },
@@ -50,6 +53,31 @@ function mapLabels(w: VueWrapper): (string | undefined)[] {
 function openQuestion(w: VueWrapper): string {
   return w.get('.position').text()
 }
+
+// shownOrder opens every question from the map and returns its prompt and
+// option texts, in the order shown.
+async function shownOrder(w: VueWrapper): Promise<string[]> {
+  const out: string[] = []
+  for (const b of w.findAll('nav button')) {
+    await b.trigger('click')
+    await flushPromises()
+    const prompt = /Q\d/.exec(w.get('.question').text())?.[0]
+    const options = w.findAll('.question .option .text').map((t) => t.text())
+    out.push(`${prompt}: ${options.join(' ')}`)
+  }
+  return out
+}
+
+// randomness makes Math.random return value; 0 turns Fisher-Yates [a, b, c]
+// into [b, c, a], 0.99 keeps the order.
+function randomness(value: number) {
+  const spy = vi.spyOn(Math, 'random').mockReturnValue(value)
+  onTestFinished(() => spy.mockRestore())
+  return spy
+}
+
+const shuffledOrder = ['Q2: Wrong Right', 'Q3: Wrong Right', 'Q1: Wrong Right']
+const writtenOrder = ['Q1: Right Wrong', 'Q2: Right Wrong', 'Q3: Right Wrong']
 
 describe('QuizActivity', () => {
   it('opens on the theory screen without questions', async () => {
@@ -166,5 +194,71 @@ describe('QuizActivity', () => {
     )
     expect(mapLabels(w).every((l) => l?.endsWith('not answered'))).toBe(true)
     expect(w.get('.counter').text()).toBe('Correct: 0 of 3')
+  })
+})
+
+describe('QuizActivity shuffling', () => {
+  it('shows the arranged order, numbered as shown', async () => {
+    randomness(0)
+    const w = await mountQuiz(undefined, true)
+    await w.get('.theory .start').trigger('click')
+    await flushPromises()
+
+    expect(openQuestion(w)).toBe('Question 1 of 3')
+    expect(w.get('.question').text()).toContain('Q2')
+    expect(w.get('.previous').attributes('disabled')).toBeDefined()
+    // Right is the second option shown; checking it is correct.
+    await answer(w, 1)
+    expect(w.get('.result').text()).toBe('Correct')
+    expect(await shownOrder(w)).toEqual(shuffledOrder)
+  })
+
+  it('keeps the order across the theory screen', async () => {
+    const random = randomness(0)
+    const w = await mountQuiz(undefined, true)
+    await w.get('.theory .start').trigger('click')
+    random.mockReturnValue(0.99)
+
+    await w.get('.to-theory').trigger('click')
+    await w.get('.theory .start').trigger('click')
+
+    expect(await shownOrder(w)).toEqual(shuffledOrder)
+  })
+
+  it('Start over draws a new order', async () => {
+    const random = randomness(0)
+    const w = await mountQuiz(undefined, true)
+    await w.get('.theory .start').trigger('click')
+    await w.findAll('nav button')[2].trigger('click')
+    random.mockReturnValue(0.99)
+
+    await w.get('.start-over').trigger('click')
+    await flushPromises()
+
+    expect(openQuestion(w)).toBe('Question 1 of 3')
+    expect(w.get('.question').text()).toContain('Q1')
+    expect(await shownOrder(w)).toEqual(writtenOrder)
+  })
+
+  it('draws a new order when mounted again', async () => {
+    const random = randomness(0)
+    const first = await mountQuiz(undefined, true)
+    await first.get('.theory .start').trigger('click')
+    expect(await shownOrder(first)).toEqual(shuffledOrder)
+    first.unmount()
+    random.mockReturnValue(0.99)
+
+    const second = await mountQuiz(undefined, true)
+    await second.get('.theory .start').trigger('click')
+
+    expect(await shownOrder(second)).toEqual(writtenOrder)
+  })
+
+  it('keeps the written order without shuffle', async () => {
+    randomness(0)
+    const w = await mountQuiz()
+    await w.get('.theory .start').trigger('click')
+
+    expect(await shownOrder(w)).toEqual(writtenOrder)
   })
 })

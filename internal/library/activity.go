@@ -39,17 +39,21 @@ type TheoryBlock struct {
 // Quiz is the questions of a quiz activity, correct options included: the
 // frontend evaluates answers, which are not protected.
 type Quiz struct {
+	// Shuffle shows the questions in a random order; the default is applied.
+	Shuffle   bool       `json:"shuffle"`
 	Questions []Question `json:"questions"`
 }
 
 // Question is one quiz question; choice is the only kind, so its data is
 // flattened into the question.
 type Question struct {
-	Kind        string   `json:"kind"`
-	Prompt      string   `json:"prompt"`
-	Explanation string   `json:"explanation"`
-	Multiple    bool     `json:"multiple"`
-	Options     []Option `json:"options"`
+	Kind        string `json:"kind"`
+	Prompt      string `json:"prompt"`
+	Explanation string `json:"explanation"`
+	Multiple    bool   `json:"multiple"`
+	// Shuffle shows the options in a random order; the default is applied.
+	Shuffle bool     `json:"shuffle"`
+	Options []Option `json:"options"`
 }
 
 // Option is one selectable item of a choice question.
@@ -141,7 +145,7 @@ func quiz(q *manifest.Quiz) *Quiz {
 	if q == nil {
 		return nil
 	}
-	out := &Quiz{Questions: make([]Question, len(q.Questions))}
+	out := &Quiz{Shuffle: orTrue(q.Shuffle), Questions: make([]Question, len(q.Questions))}
 	for i, mq := range q.Questions {
 		options := make([]Option, len(mq.Data.Options))
 		for j, o := range mq.Data.Options {
@@ -152,10 +156,16 @@ func quiz(q *manifest.Quiz) *Quiz {
 			Prompt:      mq.Prompt,
 			Explanation: mq.Explanation,
 			Multiple:    mq.Data.Multiple,
+			Shuffle:     orTrue(mq.Data.Shuffle),
 			Options:     options,
 		}
 	}
 	return out
+}
+
+// orTrue returns the value of an optional flag that defaults to true.
+func orTrue(flag *bool) bool {
+	return flag == nil || *flag
 }
 
 // CompleteActivity completes the available activity slug of the enrolled

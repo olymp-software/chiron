@@ -94,22 +94,57 @@ func TestActivityQuiz(t *testing.T) {
 		Dir:          "basics/hello",
 		Type:         manifest.TypeQuiz,
 		TheoryBlocks: []TheoryBlock{{Kind: manifest.KindMarkdown, Content: "# Quiz"}},
-		Quiz: &Quiz{Questions: []Question{
+		Quiz: &Quiz{Shuffle: true, Questions: []Question{
 			{
 				Kind:        "choice",
 				Prompt:      "Pick one",
 				Explanation: "Because",
+				Shuffle:     true,
 				Options:     []Option{{Text: "A", Correct: true}, {Text: "B", Feedback: "Not B"}},
 			},
 			{
 				Kind:     "choice",
 				Multiple: true,
+				Shuffle:  true,
 				Options:  []Option{{Text: "C", Correct: true}, {Text: "D"}},
 			},
 		}},
 	}
 	if !reflect.DeepEqual(a, want) {
 		t.Errorf("activity = %+v\nwant %+v", a, want)
+	}
+}
+
+func TestQuizShuffle(t *testing.T) {
+	tests := []struct {
+		name string
+		flag *bool
+		want bool
+	}{
+		{name: "absent", flag: nil, want: true},
+		{name: "true", flag: new(true), want: true},
+		{name: "false", flag: new(false), want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := quiz(&manifest.Quiz{
+				Shuffle: tt.flag,
+				Questions: []manifest.Question{
+					{Kind: "choice", Data: manifest.Choice{Shuffle: tt.flag}},
+					// The other level keeps its own flag.
+					{Kind: "choice", Data: manifest.Choice{Shuffle: new(!tt.want)}},
+				},
+			})
+			if got.Shuffle != tt.want {
+				t.Errorf("quiz shuffle = %v, want %v", got.Shuffle, tt.want)
+			}
+			if got.Questions[0].Shuffle != tt.want {
+				t.Errorf("question shuffle = %v, want %v", got.Questions[0].Shuffle, tt.want)
+			}
+			if got.Questions[1].Shuffle != !tt.want {
+				t.Errorf("independent question shuffle = %v, want %v", got.Questions[1].Shuffle, !tt.want)
+			}
+		})
 	}
 }
 
