@@ -74,6 +74,8 @@ type Control struct {
 
 // Quiz is the data of a quiz activity.
 type Quiz struct {
+	// Shuffle controls the question order; nil means the default, true.
+	Shuffle   *bool      `yaml:"shuffle"`
 	Questions []Question `yaml:"questions"`
 }
 
@@ -87,8 +89,10 @@ type Question struct {
 
 // Choice is the data of a choice question.
 type Choice struct {
-	Multiple bool     `yaml:"multiple"`
-	Options  []Option `yaml:"options"`
+	Multiple bool `yaml:"multiple"`
+	// Shuffle controls the option order; nil means the default, true.
+	Shuffle *bool    `yaml:"shuffle"`
+	Options []Option `yaml:"options"`
 }
 
 // Option is one selectable item of a choice question.

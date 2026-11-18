@@ -14,10 +14,6 @@ A statement the Learner marks as true or false. Today Authors emulate it with a 
 
 The Learner matches items of two lists (e.g. plan symbol ↔ action, flag ↔ command, CLI command ↔ purpose). Today Authors split one matching task into several choice questions.
 
-### Shuffling
-
-Option order (and optionally question order) is shuffled on every attempt. Today Authors vary the position of the correct option by hand, and a Learner retaking a quiz remembers answers by position.
-
 ### `select` in multiple-choice questions
 
 `select: N` on a `multiple: true` question: the UI tells the Learner how many options to select ("Select two"), and the manifest check verifies that exactly N options are correct. Today "Select two." is only text in the prompt.

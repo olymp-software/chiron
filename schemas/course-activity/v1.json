@@ -95,6 +95,10 @@
       "additionalProperties": false,
       "required": ["questions"],
       "properties": {
+        "shuffle": {
+          "description": "true (default) shows the questions in a random order, false in the order written.",
+          "type": "boolean"
+        },
         "questions": {
           "type": "array",
           "minItems": 1,
@@ -129,6 +133,10 @@
       "properties": {
         "multiple": {
           "description": "false shows radio buttons (exactly one correct option), true shows checkboxes.",
+          "type": "boolean"
+        },
+        "shuffle": {
+          "description": "true (default) shows the options in a random order, false in the order written.",
           "type": "boolean"
         },
         "options": {

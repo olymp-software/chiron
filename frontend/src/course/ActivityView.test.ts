@@ -208,12 +208,14 @@ describe('ActivityView', () => {
       slug,
       type: 'quiz',
       quiz: library.Quiz.createFrom({
+        shuffle: false,
         questions: [
           {
             kind: 'choice',
             prompt: 'Pick',
             explanation: '',
             multiple: false,
+            shuffle: false,
             options: [
               { text: 'Right', correct: true, feedback: '' },
               { text: 'Wrong', correct: false, feedback: '' },

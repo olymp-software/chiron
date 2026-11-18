@@ -1,4 +1,4 @@
-import type { library } from '../../wailsjs/go/models'
+import { library } from '../../wailsjs/go/models'
 
 // Result is what the question map shows for a question.
 export type Result = 'unchecked' | 'correct' | 'incorrect'
@@ -9,6 +9,35 @@ export interface Answer {
   selected: number[]
   checked: boolean
   correct: boolean
+}
+
+// arrange returns a copy of quiz in the order to show: the questions permuted
+// when quiz.shuffle is set and the options of each question permuted when its
+// own shuffle is set. Options are moved whole, so correctness and feedback
+// stay with them. random returns numbers in [0, 1), like Math.random.
+export function arrange(quiz: library.Quiz, random: () => number = Math.random): library.Quiz {
+  const questions = quiz.questions.map((q) =>
+    library.Question.createFrom({
+      ...q,
+      options: q.shuffle ? shuffled(q.options, random) : q.options,
+    }),
+  )
+  return library.Quiz.createFrom({
+    ...quiz,
+    questions: quiz.shuffle ? shuffled(questions, random) : questions,
+  })
+}
+
+// shuffled returns a Fisher-Yates permutation of items.
+function shuffled<T>(items: readonly T[], random: () => number): T[] {
+  const out = [...items]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    const t = out[i]
+    out[i] = out[j]
+    out[j] = t
+  }
+  return out
 }
 
 // freshAnswers returns an unchecked answer with no selection per question.

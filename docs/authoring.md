@@ -285,23 +285,28 @@ data:
       explanation: Namespaced objects live inside a namespace.
 ```
 
+**Quiz `data`:** `questions` (required, at least one) and `shuffle` (default `true`): `true` shows the questions in a random order, `false` in the order written.
+
 **Question** fields:
 
 | Field | Required | Meaning |
 |---|---|---|
 | `kind` | yes | Only `choice` exists today. |
 | `prompt` | no | Markdown above the options. Without it only the options are shown. |
-| `data` | yes | `multiple` and `options`. |
+| `data` | yes | `multiple`, `shuffle` and `options`. |
 | `explanation` | no | Markdown shown after the Learner checks the question. |
 
 **`choice` data:**
 
 - `multiple` (default `false`): `false` shows radio buttons and needs exactly one correct option; `true` shows checkboxes and needs at least one. A checkbox question with a single correct option is valid on purpose, so that the input type doesn't hint at the answer.
-- `options`: at least two, always shown in the order written (no shuffling: vary the position of correct options yourself).
+- `shuffle` (default `true`): `true` shows the options in a random order, `false` in the order written. Set `false` when the order matters, e.g. an "All of the above" option that must stay last.
+- `options`: at least two.
 
 **Option** fields: `text` (Markdown, required), `correct` (default `false`), `feedback` (Markdown, optional; shown only if the Learner selected that option).
 
 **How the Learner takes a quiz.** The activity opens on the theory screen with a **Start quiz** button. The quiz screen shows one question at a time with **Check**, **Previous** / **Next question**, a question map and a correct-answer counter, and a **Theory** button to go back to the theory blocks. After **Check**, the question locks: every correct option is highlighted, selected options get a correct or incorrect mark, and the feedback of selected options and the explanation appear. An answer is correct only if the selected set equals the correct set: there is no partial credit. **Start over** clears everything.
+
+**Shuffling.** The quiz `shuffle` controls only the question order and a question's `shuffle` only its option order; neither affects the other. A new order is drawn every time the activity opens and on **Start over**; switching to **Theory** and back keeps it. Question numbers, the question map and **Previous** / **Next question** follow the shown order, and correctness and feedback stay with their option. A drawn order can match the written one. Don't refer to positions ("option B", "the previous question") in prompts, options, feedback or explanations; if you need to, set `shuffle: false` where it applies.
 
 **Quiz results don't count.** They don't affect progress, aren't saved, and the quiz starts fresh every time the activity opens. **Next** completes the activity regardless.
 
@@ -597,4 +602,4 @@ These are specified (see `openspec/specs/`) but not in the app yet. Don't rely o
 - **Changing the learner folder root** in settings; today it is `~/Chiron`.
 - **App update notice** on startup.
 
-Ideas that aren't specified yet, such as new question kinds, shuffling or an assessment activity type, are tracked in `openspec/feature-requests.md`.
+Ideas that aren't specified yet, such as new question kinds or an assessment activity type, are tracked in `openspec/feature-requests.md`.

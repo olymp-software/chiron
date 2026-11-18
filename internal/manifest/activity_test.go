@@ -101,6 +101,30 @@ func TestParseActivityValid(t *testing.T) {
 			},
 		},
 		{
+			name: "quiz with shuffle flags",
+			yaml: "version: 1\ntype: quiz\n" + theoryBlocks +
+				"data:\n  shuffle: false\n  questions:\n" +
+				"    - kind: choice\n      data:\n        shuffle: false\n        options:\n" +
+				"          - {text: A, correct: true}\n          - {text: B}\n" +
+				"    - kind: choice\n      data:\n        shuffle: true\n        options:\n" +
+				"          - {text: C}\n          - {text: D, correct: true}\n",
+			want: &Activity{
+				Version:      1,
+				Type:         TypeQuiz,
+				TheoryBlocks: []TheoryBlock{{Kind: KindMarkdown, Data: MarkdownData{Content: "# Hi"}}},
+				Quiz: &Quiz{Shuffle: new(false), Questions: []Question{
+					{Kind: "choice", Data: Choice{
+						Shuffle: new(false),
+						Options: []Option{{Text: "A", Correct: true}, {Text: "B"}},
+					}},
+					{Kind: "choice", Data: Choice{
+						Shuffle: new(true),
+						Options: []Option{{Text: "C"}, {Text: "D", Correct: true}},
+					}},
+				}},
+			},
+		},
+		{
 			name: "coding",
 			yaml: "version: 1\ntype: coding\n" + theoryBlocks +
 				"controls:\n  - {label: Run, script: scripts/run.sh}\n" +
@@ -410,6 +434,20 @@ func TestParseActivityProblems(t *testing.T) {
 			yaml: quiz + "data:\n  questions:\n    - kind: choice\n" +
 				"      data: {multiple: true, options: [{text: A}, {text: B}]}\n",
 			want: []apperr.Problem{apperr.NewProblem(apperr.CorrectOptionRequired, "data.questions[0].data.options")},
+		},
+		{
+			name: "shuffle is not a boolean",
+			yaml: quiz + "data:\n  questions:\n    - kind: choice\n" +
+				"      data: {shuffle: 'no', options: [{text: A, correct: true}, {text: B}]}\n",
+			want: []apperr.Problem{
+				apperr.NewProblem(apperr.WrongType, "data.questions[0].data.shuffle", "want", "boolean", "got", "string"),
+			},
+		},
+		{
+			name: "shuffle next to kind",
+			yaml: quiz + "data:\n  questions:\n    - kind: choice\n      shuffle: false\n" +
+				"      data: {options: [{text: A, correct: true}, {text: B}]}\n",
+			want: []apperr.Problem{apperr.NewProblem(apperr.UnknownField, "data.questions[0]", "field", "shuffle")},
 		},
 		{
 			name:  "workspace item as string",
