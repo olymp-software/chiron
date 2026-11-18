@@ -93,6 +93,17 @@ describe('arrange', () => {
 
     expect(JSON.stringify(quiz)).toBe(before)
   })
+
+  it('returns copies of the same classes', () => {
+    const quiz = written(true, true)
+
+    const arranged = arrange(quiz, first)
+
+    expect(arranged).not.toBe(quiz)
+    expect(arranged).toBeInstanceOf(library.Quiz)
+    expect(arranged.questions[0]).not.toBe(quiz.questions[1])
+    expect(arranged.questions[0]).toBeInstanceOf(library.Question)
+  })
 })
 
 describe('isCorrect', () => {

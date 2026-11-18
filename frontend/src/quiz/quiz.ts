@@ -1,4 +1,4 @@
-import { library } from '../../wailsjs/go/models'
+import type { library } from '../../wailsjs/go/models'
 
 // Result is what the question map shows for a question.
 export type Result = 'unchecked' | 'correct' | 'incorrect'
@@ -14,18 +14,20 @@ export interface Answer {
 // arrange returns a copy of quiz in the order to show: the questions permuted
 // when quiz.shuffle is set and the options of each question permuted when its
 // own shuffle is set. Options are moved whole, so correctness and feedback
-// stay with them. random returns numbers in [0, 1), like Math.random.
+// stay with them; the input is left untouched. random returns numbers in
+// [0, 1), like Math.random.
 export function arrange(quiz: library.Quiz, random: () => number = Math.random): library.Quiz {
   const questions = quiz.questions.map((q) =>
-    library.Question.createFrom({
-      ...q,
-      options: q.shuffle ? shuffled(q.options, random) : q.options,
-    }),
+    copyWith(q, { options: q.shuffle ? shuffled(q.options, random) : [...q.options] }),
   )
-  return library.Quiz.createFrom({
-    ...quiz,
-    questions: quiz.shuffle ? shuffled(questions, random) : questions,
-  })
+  return copyWith(quiz, { questions: quiz.shuffle ? shuffled(questions, random) : questions })
+}
+
+// copyWith returns a shallow copy of obj with fields replaced. The copy keeps
+// the class of obj, so it stays a generated model without rebuilding it.
+function copyWith<T extends object>(obj: T, fields: Partial<T>): T {
+  const copy = Object.create(Object.getPrototypeOf(obj) as object | null) as T
+  return Object.assign(copy, obj, fields)
 }
 
 // shuffled returns a Fisher-Yates permutation of items.

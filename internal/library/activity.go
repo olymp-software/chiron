@@ -145,7 +145,7 @@ func quiz(q *manifest.Quiz) *Quiz {
 	if q == nil {
 		return nil
 	}
-	out := &Quiz{Shuffle: shuffle(q.Shuffle), Questions: make([]Question, len(q.Questions))}
+	out := &Quiz{Shuffle: orTrue(q.Shuffle), Questions: make([]Question, len(q.Questions))}
 	for i, mq := range q.Questions {
 		options := make([]Option, len(mq.Data.Options))
 		for j, o := range mq.Data.Options {
@@ -156,15 +156,15 @@ func quiz(q *manifest.Quiz) *Quiz {
 			Prompt:      mq.Prompt,
 			Explanation: mq.Explanation,
 			Multiple:    mq.Data.Multiple,
-			Shuffle:     shuffle(mq.Data.Shuffle),
+			Shuffle:     orTrue(mq.Data.Shuffle),
 			Options:     options,
 		}
 	}
 	return out
 }
 
-// shuffle resolves an absent shuffle flag to its default, true.
-func shuffle(flag *bool) bool {
+// orTrue returns the value of an optional flag that defaults to true.
+func orTrue(flag *bool) bool {
 	return flag == nil || *flag
 }
 

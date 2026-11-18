@@ -444,6 +444,14 @@ func TestParseActivityProblems(t *testing.T) {
 			},
 		},
 		{
+			name: "quiz shuffle is not a boolean",
+			yaml: quiz + "data:\n  shuffle: 'no'\n  questions:\n    - kind: choice\n" +
+				"      data: {options: [{text: A, correct: true}, {text: B}]}\n",
+			want: []apperr.Problem{
+				apperr.NewProblem(apperr.WrongType, "data.shuffle", "want", "boolean", "got", "string"),
+			},
+		},
+		{
 			name: "shuffle next to kind",
 			yaml: quiz + "data:\n  questions:\n    - kind: choice\n      shuffle: false\n" +
 				"      data: {options: [{text: A, correct: true}, {text: B}]}\n",

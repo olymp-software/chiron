@@ -229,11 +229,14 @@ describe('QuizActivity shuffling', () => {
     const random = randomness(0)
     const w = await mountQuiz(undefined, true)
     await w.get('.theory .start').trigger('click')
+    await w.findAll('nav button')[2].trigger('click')
     random.mockReturnValue(0.99)
 
     await w.get('.start-over').trigger('click')
+    await flushPromises()
 
     expect(openQuestion(w)).toBe('Question 1 of 3')
+    expect(w.get('.question').text()).toContain('Q1')
     expect(await shownOrder(w)).toEqual(writtenOrder)
   })
 

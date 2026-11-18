@@ -16,10 +16,12 @@ const props = defineProps<{
 // The whole quiz state lives here, so switching screens keeps it; a new
 // component, mounted for every opened activity, starts fresh. arranged is the
 // quiz in the order shown, drawn on every fresh start; answers, numbering and
-// the map are positions in it.
+// the map are positions in it. draw counts the orders drawn, so a question is
+// shown by a new QuizQuestion after every draw.
 const screen = ref<'theory' | 'quiz'>('theory')
 const started = ref(false)
 const open = ref(0)
+const draw = ref(0)
 const arranged = ref(arrange(props.quiz))
 const answers = ref<Answer[]>(freshAnswers(arranged.value))
 
@@ -60,6 +62,7 @@ function check() {
 
 function startOver() {
   arranged.value = arrange(props.quiz)
+  draw.value++
   answers.value = freshAnswers(arranged.value)
   open.value = 0
 }
@@ -87,7 +90,7 @@ function startOver() {
       </div>
     </div>
     <QuizQuestion
-      :key="open"
+      :key="`${draw}-${open}`"
       :question="questions[open]"
       :answer="answers[open]"
       :n="open + 1"
